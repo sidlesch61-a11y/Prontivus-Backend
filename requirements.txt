@@ -44,6 +44,7 @@ structlog==23.2.0
 # Environment and Configuration
 python-dotenv==1.0.0
 pydantic-settings==2.1.0
+email-validator==2.1.0
 
 # Rate Limiting and Security
 slowapi==0.1.9
