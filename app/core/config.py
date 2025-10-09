@@ -87,6 +87,15 @@ class Settings(BaseSettings):
     cors_allow_credentials: bool = Field(default=True)
     
     
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if isinstance(v, str):
+            # Split comma-separated string and strip whitespace
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+    
     @field_validator("jwt_private_key", "jwt_public_key", mode="before")
     @classmethod
     def parse_jwt_keys(cls, v):
