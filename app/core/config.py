@@ -82,7 +82,8 @@ class Settings(BaseSettings):
     cors_origins: List[str] = Field(default=[
         "http://localhost:3000",
         "http://localhost:5173",
-        "http://localhost:8080"
+        "http://localhost:8080",
+        "https://prontivus-frontend-ten.vercel.app"
     ])
     cors_allow_credentials: bool = Field(default=True)
     
