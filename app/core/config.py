@@ -114,8 +114,8 @@ class Settings(BaseSettings):
     @property
     def database_url_sync(self) -> str:
         """Get synchronous database URL for Alembic migrations."""
-        # Replace asyncpg with psycopg2 dialect
-        return self.database_url.replace("+asyncpg", "+psycopg2")
+        # Replace asyncpg with psycopg (psycopg3 for Python 3.13 compatibility)
+        return self.database_url.replace("+asyncpg", "+psycopg")
     
     model_config = {
         "case_sensitive": False,
