@@ -79,23 +79,18 @@ class Settings(BaseSettings):
     sync_batch_size: int = Field(default=100, env="SYNC_BATCH_SIZE")
     
     # CORS
-    cors_origins: List[str] = Field(default=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:8080",
-        "https://prontivus-frontend-ten.vercel.app"
-    ])
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:5173,http://localhost:8080,https://prontivus-frontend-ten.vercel.app",
+        env="CORS_ORIGINS"
+    )
     cors_allow_credentials: bool = Field(default=True)
     
-    
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from comma-separated string or list."""
-        if isinstance(v, str):
-            # Split comma-separated string and strip whitespace
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Get CORS origins as a list."""
+        if isinstance(self.cors_origins, str):
+            return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return self.cors_origins
     
     @field_validator("jwt_private_key", "jwt_public_key", mode="before")
     @classmethod
