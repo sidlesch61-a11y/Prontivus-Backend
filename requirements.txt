@@ -58,7 +58,7 @@ pillow==10.4.0
 pypdf==3.17.4
 qrcode[pil]==7.4.2
 pycryptodome==3.19.0
-pyopenssl==23.3.0
+pyopenssl==24.3.0
 requests==2.31.0
 
 # Telemedicine dependencies
