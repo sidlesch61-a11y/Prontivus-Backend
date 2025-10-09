@@ -6,4 +6,4 @@ echo ============================================================
 echo.
 echo Starting backend server...
 echo.
-python start.py
+py -3.11 start.py

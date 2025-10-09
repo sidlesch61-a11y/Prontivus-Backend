@@ -16,4 +16,4 @@ Write-Host "Starting FastAPI server on http://127.0.0.1:8001" -ForegroundColor C
 Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
 Write-Host ""
 
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+py -3.11 -m uvicorn app.main:app --host 127.0.0.1 --port 8001
