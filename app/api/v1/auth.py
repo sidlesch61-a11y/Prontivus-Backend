@@ -30,16 +30,16 @@ async def register(
 ):
     """Register a new clinic and admin user."""
     try:
-        # Create clinic using raw SQL - let DB handle defaults
+        # Create clinic using raw SQL with explicit status value
         from sqlalchemy import text
         
         clinic_id = uuid.uuid4()
         
-        # Insert clinic without status (let DB default handle it)
+        # Insert clinic with all required fields
         await db.execute(
             text("""
-                INSERT INTO clinics (id, name, cnpj_cpf, contact_email, contact_phone, created_at, updated_at)
-                VALUES (:id, :name, :cnpj_cpf, :contact_email, :contact_phone, :created_at, :updated_at)
+                INSERT INTO clinics (id, name, cnpj_cpf, contact_email, contact_phone, status, settings, created_at, updated_at)
+                VALUES (:id, :name, :cnpj_cpf, :contact_email, :contact_phone, :status, :settings::jsonb, :created_at, :updated_at)
             """),
             {
                 "id": str(clinic_id),
@@ -47,6 +47,8 @@ async def register(
                 "cnpj_cpf": request.clinic.cnpj_cpf,
                 "contact_email": request.clinic.contact_email,
                 "contact_phone": request.clinic.contact_phone,
+                "status": "active",
+                "settings": "{}",
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
