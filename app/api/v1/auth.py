@@ -36,7 +36,8 @@ async def register(
             cnpj_cpf=request.clinic.cnpj_cpf,
             contact_email=request.clinic.contact_email,
             contact_phone=request.clinic.contact_phone,
-            # Don't set status - let DB use CHECK constraint default or handle it
+            status="active",  # Simple string - CHECK constraint will validate
+            settings={}  # Empty dict for settings
         )
         db.add(clinic)
         await db.flush()  # Get clinic ID
