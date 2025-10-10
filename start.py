@@ -14,13 +14,21 @@ def main():
     """Start the Uvicorn server"""
     import uvicorn
     
+    # Get port from environment variable (for Render/production) or default to 8000
+    port = int(os.environ.get("PORT", 8000))
+    
+    # Check if running in production
+    is_production = os.environ.get("APP_ENV", "development") == "production"
+    
     print("\n" + "="*60)
     print("  Starting Prontivus Backend Server")
     print("="*60 + "\n")
     
-    print("Server will run on: http://localhost:8000")
-    print("Health Check: http://localhost:8000/health")
-    print("API Documentation: http://localhost:8000/docs (if available)")
+    print(f"Environment: {'Production' if is_production else 'Development'}")
+    print(f"Server will run on: http://0.0.0.0:{port}")
+    print(f"Health Check: http://0.0.0.0:{port}/health")
+    if not is_production:
+        print(f"API Documentation: http://localhost:{port}/docs")
     print("\n" + "="*60)
     print("  Press CTRL+C to stop the server")
     print("="*60 + "\n")
@@ -30,8 +38,8 @@ def main():
         uvicorn.run(
             "app.main:app",
             host="0.0.0.0",
-            port=8000,
-            reload=True,
+            port=port,
+            reload=not is_production,  # Only reload in development
             log_level="info",
             access_log=True
         )
