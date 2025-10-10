@@ -68,8 +68,8 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic with status='active' - migration 0015 converts ENUM to VARCHAR
-        logger.info("Creating clinic with status='active'...")
+        # Create clinic with status enum value matching PostgreSQL ENUM
+        logger.info("Creating clinic with status ENUM value...")
         
         try:
             clinic = Clinic(
@@ -77,7 +77,7 @@ async def register(
                 cnpj_cpf=request.clinic.cnpj_cpf,
                 contact_email=request.clinic.contact_email,
                 contact_phone=request.clinic.contact_phone,
-                status="active",
+                status=ClinicStatusEnum.active.value,  # Use enum value
                 settings={}
             )
             db.add(clinic)
