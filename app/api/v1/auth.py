@@ -68,34 +68,53 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic - let database handle defaults where possible
-        logger.info("Creating clinic...")
-        clinic = Clinic(
-            name=request.clinic.name,
-            cnpj_cpf=request.clinic.cnpj_cpf,
-            contact_email=request.clinic.contact_email,
-            contact_phone=request.clinic.contact_phone
-            # logo_url, settings, status will use model defaults
-        )
+        # Create clinic using raw SQL with explicit CAST for ENUM type
+        logger.info("Creating clinic with raw SQL (ENUM cast)...")
+        from sqlalchemy import text
+        import json
+        
+        clinic_id = uuid.uuid4()
+        now = datetime.utcnow()
         
         try:
-            db.add(clinic)
-            logger.info("Clinic added to session, flushing...")
+            # Use raw SQL with explicit CAST for status column
+            await db.execute(
+                text("""
+                    INSERT INTO clinics 
+                    (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, settings, status, created_at, updated_at)
+                    VALUES 
+                    (:id, :name, :cnpj, :email, :phone, :logo, :settings::jsonb, :status::clinicstatus, :created, :updated)
+                """),
+                {
+                    "id": str(clinic_id),
+                    "name": request.clinic.name,
+                    "cnpj": request.clinic.cnpj_cpf,
+                    "email": request.clinic.contact_email,
+                    "phone": request.clinic.contact_phone,
+                    "logo": None,
+                    "settings": json.dumps({}),
+                    "status": "active",
+                    "created": now,
+                    "updated": now
+                }
+            )
             await db.flush()
+            
+            # Fetch the created clinic to get the full object
+            result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
+            clinic = result.scalar_one()
+            
             logger.info(f"✅ Clinic created successfully: {clinic.id}")
         except Exception as clinic_error:
             logger.error(f"========== CLINIC CREATION ERROR ==========")
             logger.error(f"Error type: {type(clinic_error).__name__}")
             logger.error(f"Error message: {str(clinic_error)}")
-            logger.error(f"Error details: {repr(clinic_error)}")
             
-            # Log the full traceback
             import traceback
             logger.error(f"Traceback:\n{traceback.format_exc()}")
             
             await db.rollback()
             
-            # Include the actual error in the response for debugging
             error_detail = f"Falha ao criar a clínica: {str(clinic_error)}"
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
