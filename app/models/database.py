@@ -204,7 +204,7 @@ class File(FileBase, table=True):
     uploaded_by: Optional[str] = Field(default=None, foreign_key="users.id")
     patient_id: Optional[str] = Field(default=None, foreign_key="patients.id")
     record_id: Optional[str] = Field(default=None, foreign_key="medical_records.id")
-    appointment_id: Optional[str] = Field(default=None, foreign_key="appointments.id")
+    # appointment_id: Optional[str] = Field(default=None, foreign_key="appointments.id")  # Commented out - column doesn't exist in DB
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
@@ -212,7 +212,7 @@ class File(FileBase, table=True):
     clinic: Optional[Clinic] = Relationship(back_populates="files")
     patient: Optional[Patient] = Relationship(back_populates="files")
     record: Optional[MedicalRecord] = Relationship(back_populates="files")
-    appointment: Optional[Appointment] = Relationship(back_populates="files")
+    # appointment: Optional[Appointment] = Relationship(back_populates="files")  # Commented out - column doesn't exist in DB
 
 
 class InvoiceBase(SQLModel):
