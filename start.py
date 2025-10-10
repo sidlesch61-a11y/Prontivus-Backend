@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """
 Prontivus Backend Server Starter
 Simple script to start the FastAPI backend server
