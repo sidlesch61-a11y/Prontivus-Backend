@@ -241,25 +241,7 @@ class MedicalRecordResponse(BaseSchema):
     patient_name: Optional[str] = None
 
 
-# Prescription schemas
-class PrescriptionCreate(BaseSchema):
-    """Prescription creation schema."""
-    medication_name: str = Field(..., min_length=1, max_length=255)
-    dosage: str = Field(..., min_length=1, max_length=100)
-    frequency: str = Field(..., min_length=1, max_length=100)
-    duration: str = Field(..., min_length=1, max_length=100)
-    notes: Optional[str] = Field(None, max_length=1000)
-
-
-class PrescriptionResponse(BaseSchema):
-    """Prescription response schema."""
-    id: uuid.UUID
-    medication_name: str
-    dosage: str
-    frequency: str
-    duration: str
-    notes: Optional[str]
-    created_at: datetime
+# REMOVED DUPLICATE - See line 330 for correct PrescriptionCreate schema
 
 
 # File/Exam schemas
@@ -327,8 +309,25 @@ class InvoiceResponse(BaseSchema):
 
 
 # Prescription schemas
+class MedicationItem(BaseSchema):
+    """Medication item in a prescription."""
+    medication_name: str = Field(..., min_length=1, max_length=255)
+    dosage: str = Field(..., min_length=1, max_length=100)
+    frequency: str = Field(..., min_length=1, max_length=100)
+    duration: str = Field(..., min_length=1, max_length=100)
+
+
 class PrescriptionCreate(BaseSchema):
-    """Prescription creation schema."""
+    """Prescription creation schema - for prescriptions with multiple medications."""
+    patient_id: uuid.UUID
+    prescription_type: str = "simple"  # simple, antimicrobial, C1
+    medications: List[MedicationItem] = Field(..., min_items=1)
+    notes: Optional[str] = None
+    record_id: Optional[uuid.UUID] = None
+
+
+class PrescriptionCreateSingle(BaseSchema):
+    """Single medication prescription creation schema (for compatibility)."""
     patient_id: uuid.UUID
     medication_name: str = Field(..., min_length=2, max_length=255)
     dosage: Optional[str] = Field(None, max_length=100)
