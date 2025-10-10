@@ -35,7 +35,7 @@ services:
       - key: JWT_ALGORITHM
         value: HS256
       - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 30
+        value: 1440
       - key: JWT_REFRESH_TOKEN_EXPIRE_DAYS
         value: 30
 
