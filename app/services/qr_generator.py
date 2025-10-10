@@ -20,7 +20,7 @@ class QRCodeGenerator:
     """Service for generating QR codes for prescription verification."""
     
     def __init__(self):
-        self.base_url = os.getenv('BASE_URL', 'http://localhost:8000')
+        self.base_url = os.getenv('BASE_URL', 'https://prontivus-backend-wnw2.onrender.com')
         self.qr_size = 10
         self.qr_border = 4
     
