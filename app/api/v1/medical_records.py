@@ -87,68 +87,82 @@ async def create_medical_record(
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create a new medical record."""
-    # Verify patient exists and belongs to clinic
-    patient_result = await db.execute(
-        select(Patient).where(
-            Patient.id == record_data.patient_id,
-            Patient.clinic_id == current_user.clinic_id
-        )
-    )
-    patient = patient_result.scalar_one_or_none()
-    
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found"
-        )
-    
-    # Verify appointment if provided
-    if record_data.appointment_id:
-        appointment_result = await db.execute(
-            select(Appointment).where(
-                Appointment.id == record_data.appointment_id,
-                Appointment.clinic_id == current_user.clinic_id
+    try:
+        # Verify patient exists and belongs to clinic
+        patient_result = await db.execute(
+            select(Patient).where(
+                Patient.id == record_data.patient_id,
+                Patient.clinic_id == current_user.clinic_id
             )
         )
-        appointment = appointment_result.scalar_one_or_none()
+        patient = patient_result.scalar_one_or_none()
         
-        if not appointment:
+        if not patient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Appointment not found"
+                detail="Patient not found"
             )
+        
+        # Verify appointment if provided
+        if record_data.appointment_id:
+            appointment_result = await db.execute(
+                select(Appointment).where(
+                    Appointment.id == record_data.appointment_id,
+                    Appointment.clinic_id == current_user.clinic_id
+                )
+            )
+            appointment = appointment_result.scalar_one_or_none()
+            
+            if not appointment:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Appointment not found"
+                )
+        
+        # Create medical record
+        record = MedicalRecord(
+            clinic_id=current_user.clinic_id,
+            doctor_id=current_user.id,
+            **record_data.dict()
+        )
+        db.add(record)
+        await db.commit()
+        await db.refresh(record)
+        
+        # Create audit log
+        audit_log = AuditLog(
+            clinic_id=current_user.clinic_id,
+            user_id=current_user.id,
+            action="medical_record_created",
+            entity="medical_record",
+            entity_id=record.id,
+            details={
+                "appointment_id": str(record.appointment_id) if record.appointment_id else None,
+                "patient_id": str(record.patient_id)
+            }
+        )
+        db.add(audit_log)
+        await db.commit()
+        
+        # Get related data for response
+        record_response = MedicalRecordResponse.from_orm(record)
+        record_response.patient_name = patient.name
+        record_response.doctor_name = current_user.name
+        
+        return record_response
     
-    # Create medical record
-    record = MedicalRecord(
-        clinic_id=current_user.clinic_id,
-        doctor_id=current_user.id,
-        **record_data.dict()
-    )
-    db.add(record)
-    await db.commit()
-    await db.refresh(record)
-    
-    # Create audit log
-    audit_log = AuditLog(
-        clinic_id=current_user.clinic_id,
-        user_id=current_user.id,
-        action="medical_record_created",
-        entity="medical_record",
-        entity_id=record.id,
-        details={
-            "appointment_id": str(record.appointment_id) if record.appointment_id else None,
-            "patient_id": str(record.patient_id)
-        }
-    )
-    db.add(audit_log)
-    await db.commit()
-    
-    # Get related data for response
-    record_response = MedicalRecordResponse.from_orm(record)
-    record_response.patient_name = patient.name
-    record_response.doctor_name = current_user.name
-    
-    return record_response
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        print(f"Error creating medical record: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create medical record: {str(e)}"
+        )
 
 
 @router.get("/{record_id}", response_model=MedicalRecordResponse)
