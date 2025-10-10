@@ -40,31 +40,50 @@ async def create_prescription(
                 detail="Patient not found"
             )
         
-        # Create prescription
-        prescription = PrescriptionDB(
-            clinic_id=current_user.clinic_id,
-            record_id=prescription_data.record_id if hasattr(prescription_data, 'record_id') else None,
-            medication_name=prescription_data.medication_name,
-            dosage=prescription_data.dosage,
-            frequency=prescription_data.frequency,
-            duration=prescription_data.duration,
-            notes=prescription_data.notes,
-            created_at=datetime.now()
-        )
+        # Create prescription(s) - support both single and multiple medications
+        created_prescriptions = []
         
-        db.add(prescription)
+        # Check if this has medications list (new format)
+        if hasattr(prescription_data, 'medications') and prescription_data.medications:
+            # New format: array of medications
+            for medication in prescription_data.medications:
+                prescription = PrescriptionDB(
+                    clinic_id=current_user.clinic_id,
+                    record_id=prescription_data.record_id if hasattr(prescription_data, 'record_id') else None,
+                    medication_name=medication.medication_name,
+                    dosage=medication.dosage,
+                    frequency=medication.frequency,
+                    duration=medication.duration,
+                    notes=prescription_data.notes,
+                    created_at=datetime.now()
+                )
+                db.add(prescription)
+                created_prescriptions.append(prescription)
+        else:
+            # Old format: single medication
+            prescription = PrescriptionDB(
+                clinic_id=current_user.clinic_id,
+                record_id=prescription_data.record_id if hasattr(prescription_data, 'record_id') else None,
+                medication_name=prescription_data.medication_name,
+                dosage=prescription_data.dosage,
+                frequency=prescription_data.frequency,
+                duration=prescription_data.duration,
+                notes=prescription_data.notes,
+                created_at=datetime.now()
+            )
+            db.add(prescription)
+            created_prescriptions.append(prescription)
+        
         await db.commit()
-        await db.refresh(prescription)
         
-        # Get related data for response
-        patient_result = await db.execute(
-            select(Patient).where(Patient.id == patient.record_id if hasattr(patient, 'record_id') else prescription_data.patient_id)
-        )
-        patient = patient_result.scalar_one_or_none()
+        # Refresh all
+        for prescription in created_prescriptions:
+            await db.refresh(prescription)
         
-        response = PrescriptionResponse.from_orm(prescription)
-        if patient:
-            response.patient_name = patient.name
+        # Return first prescription for backward compatibility
+        response = PrescriptionResponse.from_orm(created_prescriptions[0])
+        response.patient_name = patient.name
+        response.doctor_name = current_user.name
         
         return response
         
