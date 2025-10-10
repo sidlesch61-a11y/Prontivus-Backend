@@ -12,9 +12,9 @@ services:
       pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
       echo "=== Running Database Migrations ==="
+      export DATABASE_URL="${DATABASE_URL}"
       cd app/db/alembic
       alembic upgrade head
-      cd ../../../
       echo "=== Migrations Complete ==="
     startCommand: python start.py
     envVars:
