@@ -126,7 +126,7 @@ class Appointment(AppointmentBase, table=True):
     patient: Optional[Patient] = Relationship(back_populates="appointments")
     doctor: Optional[User] = Relationship(back_populates="appointments_as_doctor")
     medical_records: List["MedicalRecord"] = Relationship(back_populates="appointment")
-    files: List["File"] = Relationship(back_populates="appointment")
+    # files: List["File"] = Relationship(back_populates="appointment")  # Commented out - column doesn't exist in DB
 
 
 class MedicalRecordBase(SQLModel):
