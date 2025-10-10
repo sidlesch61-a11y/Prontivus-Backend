@@ -68,19 +68,8 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic WITHOUT status field - let DB handle it or use ALTER TABLE
-        logger.info("Creating clinic WITHOUT status field...")
-        
-        # First, ensure status column allows NULL or has default
-        try:
-            from sqlalchemy import text
-            # Try to alter the column to make it nullable
-            await db.execute(text("ALTER TABLE clinics ALTER COLUMN status DROP NOT NULL"))
-            await db.commit()
-            logger.info("✅ Made status column nullable")
-        except Exception as alter_error:
-            logger.warning(f"Could not alter status column: {alter_error}")
-            # Continue anyway
+        # Create clinic with status='active' - migration 0015 converts ENUM to VARCHAR
+        logger.info("Creating clinic with status='active'...")
         
         try:
             clinic = Clinic(
@@ -88,8 +77,8 @@ async def register(
                 cnpj_cpf=request.clinic.cnpj_cpf,
                 contact_email=request.clinic.contact_email,
                 contact_phone=request.clinic.contact_phone,
+                status="active",
                 settings={}
-                # Deliberately omit status
             )
             db.add(clinic)
             await db.flush()
