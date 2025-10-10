@@ -70,11 +70,15 @@ class SecurityManager:
     
     def hash_password(self, password: str) -> str:
         """Hash a password using bcrypt."""
-        return pwd_context.hash(password)
+        # Bcrypt has a 72-byte limit, truncate if necessary
+        password_bytes = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+        return pwd_context.hash(password_bytes)
     
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
-        return pwd_context.verify(plain_password, hashed_password)
+        # Bcrypt has a 72-byte limit, truncate if necessary
+        password_bytes = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+        return pwd_context.verify(password_bytes, hashed_password)
     
     def generate_totp_secret(self) -> str:
         """Generate a new TOTP secret for 2FA."""
