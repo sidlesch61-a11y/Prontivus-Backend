@@ -7,7 +7,16 @@ services:
     plan: free
     rootDir: backend
     pythonVersion: "3.11"
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt && echo "=== Running Migrations ===" && python -m alembic -c app/db/alembic/alembic.ini upgrade head && echo "=== Migrations Done ==="
+    buildCommand: |
+      pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+      echo "========================================="
+      echo "RUNNING DATABASE MIGRATIONS"
+      echo "========================================="
+      python -m alembic -c app/db/alembic/alembic.ini upgrade head
+      echo "========================================="
+      echo "MIGRATIONS COMPLETE"
+      echo "========================================="
     startCommand: python start.py
     envVars:
       - key: DATABASE_URL
