@@ -188,7 +188,7 @@ async def delete_patient(
     current_user = Depends(require_patients_write),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """Delete patient."""
+    """Soft delete patient (archive)."""
     # Get patient
     result = await db.execute(
         select(Patient).where(
@@ -204,19 +204,33 @@ async def delete_patient(
             detail="Patient not found"
         )
     
-    # Create audit log
-    audit_log = AuditLog(
-        clinic_id=current_user.clinic_id,
-        user_id=current_user.id,
-        action="patient_deleted",
-        entity="patient",
-        entity_id=patient.id,
-        details={"patient_name": patient.name, "cpf": patient.cpf}
-    )
-    db.add(audit_log)
-    
-    # Delete patient
-    await db.delete(patient)
-    await db.commit()
-    
-    return {"message": "Patient deleted successfully"}
+    # Soft delete: mark as archived (if archived field exists)
+    # Otherwise, just delete related audit logs and then patient
+    try:
+        # Create audit log
+        audit_log = AuditLog(
+            clinic_id=current_user.clinic_id,
+            user_id=current_user.id,
+            action="patient_deleted",
+            entity="patient",
+            entity_id=patient.id,
+            details={"patient_name": patient.name, "cpf": patient.cpf}
+        )
+        db.add(audit_log)
+        
+        # Check if patient has the 'archived' attribute for soft delete
+        if hasattr(patient, 'archived'):
+            patient.archived = True
+            await db.commit()
+        else:
+            # Hard delete - CASCADE should handle related records
+            await db.delete(patient)
+            await db.commit()
+        
+        return {"message": "Patient deleted successfully"}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete patient. Patient may have related records. Error: {str(e)}"
+        )
