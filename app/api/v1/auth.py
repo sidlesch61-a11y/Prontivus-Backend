@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.auth import get_current_user, get_current_user_response
 from app.db.session import get_db_session, get_db_transaction
 from app.models import User, Clinic, AuditLog
+from app.models.database import ClinicStatusEnum
 from app.schemas import (
     RegisterRequest, LoginRequest, TokenResponse, RefreshRequest,
     TwoFactorRequest, UserResponse, ErrorResponse
