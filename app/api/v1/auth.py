@@ -30,16 +30,32 @@ async def register(
 ):
     """Register a new clinic and admin user."""
     try:
-        # Create clinic using ORM - don't set status, let DB default handle it
-        clinic = Clinic(
-            name=request.clinic.name,
-            cnpj_cpf=request.clinic.cnpj_cpf,
-            contact_email=request.clinic.contact_email,
-            contact_phone=request.clinic.contact_phone,
-            settings={}  # Empty dict for settings
-        )
-        db.add(clinic)
-        await db.flush()  # Get clinic ID
+        # Create clinic - try ORM first, fallback to raw SQL if type issues
+        try:
+            clinic = Clinic(
+                name=request.clinic.name,
+                cnpj_cpf=request.clinic.cnpj_cpf,
+                contact_email=request.clinic.contact_email,
+                contact_phone=request.clinic.contact_phone,
+                status="active",
+                settings={}
+            )
+            db.add(clinic)
+            await db.flush()
+        except Exception as clinic_error:
+            # If ORM fails due to type issues, create manually
+            await db.rollback()
+            from sqlalchemy import text
+            clinic_id = uuid.uuid4()
+            await db.execute(
+                text("INSERT INTO clinics (id, name, cnpj_cpf, contact_email, contact_phone, settings, created_at, updated_at) VALUES (:id, :name, :cnpj, :email, :phone, '{}'::jsonb, :now, :now) ON CONFLICT DO NOTHING"),
+                {"id": str(clinic_id), "name": request.clinic.name, "cnpj": request.clinic.cnpj_cpf, "email": request.clinic.contact_email, "phone": request.clinic.contact_phone, "now": datetime.utcnow()}
+            )
+            await db.flush()
+            # Fetch the created clinic
+            from sqlalchemy import select
+            result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
+            clinic = result.scalar_one()
         
         # Create admin user
         user = User(
