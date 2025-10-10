@@ -28,86 +28,158 @@ async def register(
     request: RegisterRequest,
     db: AsyncSession = Depends(get_db_transaction)
 ):
-    """Register a new clinic and admin user."""
+    """
+    Register a new clinic and admin user.
+    
+    This endpoint creates a clinic and its first admin user in a single transaction.
+    All errors are caught and converted to appropriate HTTP status codes.
+    """
+    import logging
+    logger = logging.getLogger("app.api.v1.auth")
+    
     try:
-        # Create clinic - try ORM first, fallback to raw SQL if type issues
-        try:
-            clinic = Clinic(
-                name=request.clinic.name,
-                cnpj_cpf=request.clinic.cnpj_cpf,
-                contact_email=request.clinic.contact_email,
-                contact_phone=request.clinic.contact_phone,
-                status="active",
-                settings={}
+        logger.info(f"Registration attempt for email: {request.user.email}")
+        
+        # Validate email uniqueness first
+        existing_user_query = await db.execute(
+            select(User).where(User.email == request.user.email)
+        )
+        if existing_user_query.scalar_one_or_none():
+            logger.warning(f"Registration failed: Email already exists - {request.user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email já cadastrado (Email already registered)"
             )
+        
+        # Validate CNPJ uniqueness
+        existing_clinic_query = await db.execute(
+            select(Clinic).where(Clinic.cnpj_cpf == request.clinic.cnpj_cpf)
+        )
+        if existing_clinic_query.scalar_one_or_none():
+            logger.warning(f"Registration failed: CNPJ already exists - {request.clinic.cnpj_cpf}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CNPJ/CPF já cadastrado (CNPJ/CPF already registered)"
+            )
+        
+        # Create clinic with explicit values
+        clinic = Clinic(
+            name=request.clinic.name,
+            cnpj_cpf=request.clinic.cnpj_cpf,
+            contact_email=request.clinic.contact_email,
+            contact_phone=request.clinic.contact_phone,
+            logo_url=None,
+            settings={},
+            status="active"  # Explicit string value
+        )
+        
+        try:
             db.add(clinic)
             await db.flush()
+            logger.info(f"Clinic created successfully: {clinic.id}")
         except Exception as clinic_error:
-            # If ORM fails due to type issues, create manually
+            logger.error(f"Clinic creation failed: {str(clinic_error)}")
             await db.rollback()
-            from sqlalchemy import text
-            clinic_id = uuid.uuid4()
-            await db.execute(
-                text("INSERT INTO clinics (id, name, cnpj_cpf, contact_email, contact_phone, settings, created_at, updated_at) VALUES (:id, :name, :cnpj, :email, :phone, '{}'::jsonb, :now, :now) ON CONFLICT DO NOTHING"),
-                {"id": str(clinic_id), "name": request.clinic.name, "cnpj": request.clinic.cnpj_cpf, "email": request.clinic.contact_email, "phone": request.clinic.contact_phone, "now": datetime.utcnow()}
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Falha ao criar clínica (Failed to create clinic): {str(clinic_error)}"
             )
-            await db.flush()
-            # Fetch the created clinic
-            from sqlalchemy import select
-            result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
-            clinic = result.scalar_one()
+        
+        # Hash password securely
+        try:
+            password_hash = security.hash_password(request.user.password)
+        except Exception as hash_error:
+            logger.error(f"Password hashing failed: {str(hash_error)}")
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Erro ao processar senha (Password processing error)"
+            )
         
         # Create admin user
         user = User(
             clinic_id=clinic.id,
             name=request.user.name,
             email=request.user.email,
-            password_hash=security.hash_password(request.user.password),
+            password_hash=password_hash,
             role=request.user.role,
-            is_active=True
+            is_active=True,
+            last_login=None
         )
-        db.add(user)
-        await db.flush()  # Get user ID
+        
+        try:
+            db.add(user)
+            await db.flush()
+            logger.info(f"User created successfully: {user.id}")
+        except Exception as user_error:
+            logger.error(f"User creation failed: {str(user_error)}")
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Falha ao criar usuário (Failed to create user): {str(user_error)}"
+            )
         
         # Create audit log
-        audit_log = AuditLog(
-            clinic_id=clinic.id,
-            user_id=user.id,
-            action="clinic_registered",
-            entity="clinic",
-            entity_id=clinic.id,
-            details={
-                "clinic_name": clinic.name,
-                "admin_email": user.email
-            }
-        )
-        db.add(audit_log)
-        
-        await db.commit()
+        try:
+            audit_log = AuditLog(
+                clinic_id=clinic.id,
+                user_id=user.id,
+                action="clinic_registered",
+                entity="clinic",
+                entity_id=clinic.id,
+                details={
+                    "clinic_name": clinic.name,
+                    "admin_email": user.email,
+                    "role": user.role
+                }
+            )
+            db.add(audit_log)
+            await db.commit()
+            logger.info(f"Registration completed successfully for clinic: {clinic.id}, user: {user.id}")
+        except Exception as audit_error:
+            logger.warning(f"Audit log creation failed (non-critical): {str(audit_error)}")
+            # Commit anyway - audit log failure shouldn't block registration
+            await db.commit()
         
         return {
+            "status": "success",
             "clinic_id": str(clinic.id),
             "user_id": str(user.id),
-            "message": "Clinic and admin user created successfully"
+            "message": "Usuário e clínica cadastrados com sucesso (Clinic and admin user created successfully)"
         }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (already properly formatted)
+        raise
         
     except IntegrityError as e:
         await db.rollback()
-        if "email" in str(e):
+        error_msg = str(e).lower()
+        logger.error(f"Integrity error during registration: {error_msg}")
+        
+        if "email" in error_msg or "users_email" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+                detail="Email já cadastrado (Email already registered)"
             )
-        elif "cnpj_cpf" in str(e):
+        elif "cnpj_cpf" in error_msg or "clinics_cnpj" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="CNPJ/CPF already registered"
+                detail="CNPJ/CPF já cadastrado (CNPJ/CPF already registered)"
             )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Registration failed"
+                detail=f"Erro de integridade de dados (Data integrity error): {str(e)}"
             )
+    
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Unexpected error during registration: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Erro ao processar cadastro (Registration processing error): {str(e)}"
+        )
 
 
 @router.post("/login", response_model=TokenResponse)
