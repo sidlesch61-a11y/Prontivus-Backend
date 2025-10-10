@@ -19,7 +19,7 @@ class ClinicBase(SQLModel):
     contact_phone: Optional[str] = None
     logo_url: Optional[str] = None
     settings: Optional[Dict[str, Any]] = Field(default_factory=lambda: {}, sa_column=Column(JSON))
-    status: str = Field(default="active")
+    status: str = Field(default="active", sa_column=Column("status", sa_type=SQLEnum('active', 'inactive', 'suspended', name='clinicstatus', create_type=False)))
 
 
 class Clinic(ClinicBase, table=True):
