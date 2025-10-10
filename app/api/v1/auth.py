@@ -68,22 +68,61 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic with simple string status (VARCHAR)
-        logger.info("Creating clinic with VARCHAR status='active'...")
+        # Create clinic using raw SQL with explicit ENUM cast
+        logger.info("Creating clinic with raw SQL and ENUM cast...")
+        
+        from sqlalchemy import text
+        import json
+        
+        clinic_id = uuid.uuid4()
+        now = datetime.utcnow()
         
         try:
-            clinic = Clinic(
-                name=request.clinic.name,
-                cnpj_cpf=request.clinic.cnpj_cpf,
-                contact_email=request.clinic.contact_email,
-                contact_phone=request.clinic.contact_phone,
-                status="active",  # Simple string, will be VARCHAR
-                settings={}
+            # Use raw SQL to explicitly cast status to the ENUM type
+            # First, try to query what values the ENUM accepts
+            result = await db.execute(text("""
+                SELECT enumlabel FROM pg_enum 
+                WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'clinicstatus')
+                ORDER BY enumsortorder
+            """))
+            enum_values = [row[0] for row in result.fetchall()]
+            logger.info(f"Available ENUM values: {enum_values}")
+            
+            # Determine the correct status value
+            status_value = 'active' if 'active' in enum_values else (enum_values[0] if enum_values else 'active')
+            logger.info(f"Using status value: {status_value}")
+            
+            # Insert using raw SQL with CAST to enum
+            await db.execute(
+                text("""
+                    INSERT INTO clinics 
+                    (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, settings, status, created_at, updated_at)
+                    VALUES 
+                    (:id, :name, :cnpj, :email, :phone, :logo, :settings::jsonb, :status::clinicstatus, :created, :updated)
+                """),
+                {
+                    "id": str(clinic_id),
+                    "name": request.clinic.name,
+                    "cnpj": request.clinic.cnpj_cpf,
+                    "email": request.clinic.contact_email,
+                    "phone": request.clinic.contact_phone,
+                    "logo": None,
+                    "settings": json.dumps({}),
+                    "status": status_value,
+                    "created": now,
+                    "updated": now
+                }
             )
-            db.add(clinic)
             await db.flush()
             
-            logger.info(f"✅ Clinic created successfully: {clinic.id}")
+            # Fetch the created clinic
+            result = await db.execute(text("SELECT * FROM clinics WHERE id = :id"), {"id": str(clinic_id)})
+            clinic_row = result.fetchone()
+            
+            logger.info(f"✅ Clinic created successfully: {clinic_id}")
+            # Create a Clinic object for the user relationship
+            clinic = Clinic(id=clinic_id)
+            
         except Exception as clinic_error:
             logger.error(f"========== CLINIC CREATION ERROR ==========")
             logger.error(f"Error type: {type(clinic_error).__name__}")
