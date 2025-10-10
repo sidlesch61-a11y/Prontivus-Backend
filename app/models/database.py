@@ -210,7 +210,7 @@ class File(FileBase, table=True):
     record_id: Optional[str] = Field(default=None, foreign_key="medical_records.id")
     # appointment_id: Optional[str] = Field(default=None, foreign_key="appointments.id")  # Commented out - column doesn't exist in DB
     created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    # updated_at: datetime = Field(default_factory=datetime.now)  # Commented out - column doesn't exist in DB
     
     # Relationships
     clinic: Optional[Clinic] = Relationship(back_populates="files")
