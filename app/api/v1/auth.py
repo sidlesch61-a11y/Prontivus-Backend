@@ -15,7 +15,6 @@ from app.core.config import settings
 from app.core.auth import get_current_user, get_current_user_response
 from app.db.session import get_db_session, get_db_transaction
 from app.models import User, Clinic, AuditLog
-from app.models.database import ClinicStatusEnum
 from app.schemas import (
     RegisterRequest, LoginRequest, TokenResponse, RefreshRequest,
     TwoFactorRequest, UserResponse, ErrorResponse
@@ -69,8 +68,8 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic with status enum value matching PostgreSQL ENUM
-        logger.info("Creating clinic with status ENUM value...")
+        # Create clinic with simple string status (VARCHAR)
+        logger.info("Creating clinic with VARCHAR status='active'...")
         
         try:
             clinic = Clinic(
@@ -78,7 +77,7 @@ async def register(
                 cnpj_cpf=request.clinic.cnpj_cpf,
                 contact_email=request.clinic.contact_email,
                 contact_phone=request.clinic.contact_phone,
-                status=ClinicStatusEnum.active.value,  # Use enum value
+                status="active",  # Simple string, will be VARCHAR
                 settings={}
             )
             db.add(clinic)

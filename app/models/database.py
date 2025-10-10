@@ -6,19 +6,9 @@ These models match the database tables we created.
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import JSON, Enum as SQLEnum
+from sqlalchemy import JSON, String as SQLString
 from pydantic import EmailStr
 import uuid
-import enum
-
-
-# Define ClinicStatus enum to match PostgreSQL ENUM type
-class ClinicStatusEnum(str, enum.Enum):
-    """Clinic status enumeration matching PostgreSQL clinicstatus type."""
-    active = "active"
-    inactive = "inactive"
-    suspended = "suspended"
-    trial = "trial"
 
 
 class ClinicBase(SQLModel):
@@ -29,17 +19,10 @@ class ClinicBase(SQLModel):
     contact_phone: Optional[str] = None
     logo_url: Optional[str] = None
     settings: Optional[Dict[str, Any]] = Field(default_factory=lambda: {}, sa_column=Column(JSON))
+    # Use simple VARCHAR instead of ENUM to avoid PostgreSQL ENUM issues
     status: str = Field(
         default="active",
-        sa_column=Column(
-            SQLEnum(
-                'active', 'inactive', 'suspended', 'trial',
-                name='clinicstatus',
-                create_type=False  # Don't try to create the ENUM, it already exists
-            ),
-            nullable=False,
-            default="active"
-        )
+        sa_column=Column(SQLString, nullable=False, server_default="active")
     )
 
 
