@@ -68,22 +68,21 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic using raw SQL with CAST function for ENUM type
-        logger.info("Creating clinic with raw SQL (ENUM cast)...")
+        # Create clinic using raw SQL - let DB defaults handle status and settings
+        logger.info("Creating clinic with raw SQL (using DB defaults)...")
         from sqlalchemy import text
-        import json
         
         clinic_id = uuid.uuid4()
         now = datetime.utcnow()
         
         try:
-            # Use raw SQL with CAST() function for proper type conversion
+            # Insert without status (uses DB default 'active') and without settings (uses DB default {})
             await db.execute(
                 text("""
                     INSERT INTO clinics 
-                    (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, settings, status, created_at, updated_at)
+                    (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, created_at, updated_at)
                     VALUES 
-                    (:id, :name, :cnpj, :email, :phone, :logo, CAST(:settings AS jsonb), CAST(:status AS clinicstatus), :created, :updated)
+                    (:id, :name, :cnpj, :email, :phone, :logo, :created, :updated)
                 """),
                 {
                     "id": str(clinic_id),
@@ -92,8 +91,6 @@ async def register(
                     "email": request.clinic.contact_email,
                     "phone": request.clinic.contact_phone,
                     "logo": None,
-                    "settings": json.dumps({}),
-                    "status": "active",
                     "created": now,
                     "updated": now
                 }
