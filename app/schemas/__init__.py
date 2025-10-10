@@ -101,11 +101,11 @@ class ClinicResponse(BaseSchema):
 
 
 class ClinicUpdate(BaseSchema):
-    """Clinic update schema."""
-    name: Optional[str] = Field(None, min_length=2, max_length=255)
-    contact_email: Optional[EmailStr]
-    contact_phone: Optional[str] = Field(None, min_length=10, max_length=20)
-    logo_url: Optional[str]
+    """Clinic update schema - all fields optional for partial updates."""
+    name: Optional[str] = None
+    contact_email: Optional[str] = None  # Changed from EmailStr to avoid validation on None
+    contact_phone: Optional[str] = None
+    logo_url: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
 
 
