@@ -120,8 +120,8 @@ class Appointment(AppointmentBase, table=True):
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     clinic_id: uuid.UUID = Field(foreign_key="clinics.id")
-    patient_id: str = Field(foreign_key="patients.id")
-    doctor_id: str = Field(foreign_key="users.id")
+    patient_id: uuid.UUID = Field(foreign_key="patients.id")  # Fixed: UUID not str
+    doctor_id: uuid.UUID = Field(foreign_key="users.id")      # Fixed: UUID not str
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
