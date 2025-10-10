@@ -6,7 +6,7 @@ These models match the database tables we created.
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import JSON
+from sqlalchemy import JSON, Enum as SQLEnum
 from pydantic import EmailStr
 import uuid
 
