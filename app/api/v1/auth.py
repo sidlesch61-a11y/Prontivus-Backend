@@ -30,13 +30,12 @@ async def register(
 ):
     """Register a new clinic and admin user."""
     try:
-        # Create clinic using ORM
+        # Create clinic using ORM - don't set status, let DB default handle it
         clinic = Clinic(
             name=request.clinic.name,
             cnpj_cpf=request.clinic.cnpj_cpf,
             contact_email=request.clinic.contact_email,
             contact_phone=request.clinic.contact_phone,
-            status="active",  # Simple string - CHECK constraint will validate
             settings={}  # Empty dict for settings
         )
         db.add(clinic)
