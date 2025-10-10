@@ -68,27 +68,31 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic with explicit values
+        # Create clinic - let database handle defaults where possible
+        logger.info("Creating clinic...")
         clinic = Clinic(
             name=request.clinic.name,
             cnpj_cpf=request.clinic.cnpj_cpf,
             contact_email=request.clinic.contact_email,
-            contact_phone=request.clinic.contact_phone,
-            logo_url=None,
-            settings={},
-            status="active"  # Explicit string value
+            contact_phone=request.clinic.contact_phone
+            # logo_url, settings, status will use model defaults
         )
         
         try:
             db.add(clinic)
+            logger.info("Clinic added to session, flushing...")
             await db.flush()
-            logger.info(f"Clinic created successfully: {clinic.id}")
+            logger.info(f"✅ Clinic created successfully: {clinic.id}")
         except Exception as clinic_error:
             logger.error(f"========== CLINIC CREATION ERROR ==========")
             logger.error(f"Error type: {type(clinic_error).__name__}")
             logger.error(f"Error message: {str(clinic_error)}")
             logger.error(f"Error details: {repr(clinic_error)}")
-            logger.error(f"Clinic data: name={clinic.name}, status={clinic.status}, settings={clinic.settings}")
+            
+            # Log the full traceback
+            import traceback
+            logger.error(f"Traceback:\n{traceback.format_exc()}")
+            
             await db.rollback()
             
             # Include the actual error in the response for debugging
