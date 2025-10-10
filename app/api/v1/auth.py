@@ -68,38 +68,20 @@ async def register(
                 detail="CNPJ/CPF já cadastrado no sistema."
             )
         
-        # Create clinic using raw SQL - let DB defaults handle status and settings
-        logger.info("Creating clinic with raw SQL (using DB defaults)...")
-        from sqlalchemy import text
-        
-        clinic_id = uuid.uuid4()
-        now = datetime.utcnow()
+        # Create clinic using ORM with explicit status
+        logger.info("Creating clinic with ORM (explicit status)...")
         
         try:
-            # Insert without status (uses DB default 'active') and without settings (uses DB default {})
-            await db.execute(
-                text("""
-                    INSERT INTO clinics 
-                    (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, created_at, updated_at)
-                    VALUES 
-                    (:id, :name, :cnpj, :email, :phone, :logo, :created, :updated)
-                """),
-                {
-                    "id": str(clinic_id),
-                    "name": request.clinic.name,
-                    "cnpj": request.clinic.cnpj_cpf,
-                    "email": request.clinic.contact_email,
-                    "phone": request.clinic.contact_phone,
-                    "logo": None,
-                    "created": now,
-                    "updated": now
-                }
+            clinic = Clinic(
+                name=request.clinic.name,
+                cnpj_cpf=request.clinic.cnpj_cpf,
+                contact_email=request.clinic.contact_email,
+                contact_phone=request.clinic.contact_phone,
+                status="active",
+                settings={}
             )
+            db.add(clinic)
             await db.flush()
-            
-            # Fetch the created clinic to get the full object
-            result = await db.execute(select(Clinic).where(Clinic.id == clinic_id))
-            clinic = result.scalar_one()
             
             logger.info(f"✅ Clinic created successfully: {clinic.id}")
         except Exception as clinic_error:
