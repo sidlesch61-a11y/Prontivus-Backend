@@ -114,9 +114,11 @@ async def create_appointment(
     # Lock based on doctor_id and appointment time
     lock_id = hash(f"{appointment_data.doctor_id}_{appointment_data.start_time.date()}")
     
+    lock_acquired = False
     try:
         # Acquire advisory lock
         await db.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": abs(lock_id) % (2**63)})
+        lock_acquired = True
         
         # Check for overlapping appointments
         overlap_query = select(func.count(Appointment.id)).where(
@@ -202,9 +204,25 @@ async def create_appointment(
         
         return appointment_response
         
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        print(f"Error creating appointment: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create appointment: {str(e)}"
+        )
     finally:
-        # Release advisory lock
-        await db.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": abs(lock_id) % (2**63)})
+        # Release advisory lock only if it was acquired
+        if lock_acquired:
+            try:
+                await db.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": abs(lock_id) % (2**63)})
+            except Exception:
+                pass  # Ignore unlock errors
 
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse)
