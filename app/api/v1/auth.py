@@ -92,13 +92,13 @@ async def register(
             status_value = 'active' if 'active' in enum_values else (enum_values[0] if enum_values else 'active')
             logger.info(f"Using status value: {status_value}")
             
-            # Insert using raw SQL with CAST to enum
+            # Insert using raw SQL with CAST to enum - use CAST() function instead of ::
             await db.execute(
                 text("""
                     INSERT INTO clinics 
                     (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, settings, status, created_at, updated_at)
                     VALUES 
-                    (:id, :name, :cnpj, :email, :phone, :logo, :settings::jsonb, :status::clinicstatus, :created, :updated)
+                    (:id, :name, :cnpj, :email, :phone, :logo, CAST(:settings AS jsonb), CAST(:status AS clinicstatus), :created, :updated)
                 """),
                 {
                     "id": str(clinic_id),
