@@ -38,13 +38,18 @@ async def register(
     logger = logging.getLogger("app.api.v1.auth")
     
     try:
-        logger.info(f"Registration attempt for email: {request.user.email}")
+        logger.info(f"========== REGISTRATION ATTEMPT ==========")
+        logger.info(f"Email: {request.user.email}")
+        logger.info(f"Clinic Name: {request.clinic.name}")
+        logger.info(f"CNPJ: {request.clinic.cnpj_cpf}")
+        logger.info(f"Role: {request.user.role}")
         
         # Validate email uniqueness first
         existing_user_query = await db.execute(
             select(User).where(User.email == request.user.email)
         )
-        if existing_user_query.scalar_one_or_none():
+        existing_user = existing_user_query.scalar_one_or_none()
+        if existing_user:
             logger.warning(f"Registration failed: Email already exists - {request.user.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -55,7 +60,8 @@ async def register(
         existing_clinic_query = await db.execute(
             select(Clinic).where(Clinic.cnpj_cpf == request.clinic.cnpj_cpf)
         )
-        if existing_clinic_query.scalar_one_or_none():
+        existing_clinic = existing_clinic_query.scalar_one_or_none()
+        if existing_clinic:
             logger.warning(f"Registration failed: CNPJ already exists - {request.clinic.cnpj_cpf}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
