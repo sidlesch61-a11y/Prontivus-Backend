@@ -313,8 +313,8 @@ class MedicationItem(BaseSchema):
     """Medication item in a prescription."""
     medication_name: str = Field(..., min_length=1, max_length=255)
     dosage: str = Field(..., min_length=1, max_length=100)
-    frequency: str = Field(..., min_length=1, max_length=100)
-    duration: str = Field(..., min_length=1, max_length=100)
+    frequency: Optional[str] = Field(None, max_length=100)  # Optional - some medications don't need frequency
+    duration: Optional[str] = Field(None, max_length=100)   # Optional - some medications are continuous
 
 
 class PrescriptionCreate(BaseSchema):
