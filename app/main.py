@@ -60,20 +60,27 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# CORS middleware - Must be added before other middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=settings.cors_allow_credentials,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Trusted host middleware
 if settings.is_production:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*.prontivus.com", "prontivus.com"]
+        allowed_hosts=[
+            "*.prontivus.com", 
+            "prontivus.com",
+            "*.onrender.com",  # Allow Render.com hosting
+            "prontivus-backend-wnw2.onrender.com"  # Specific backend host
+        ]
     )
 
 
