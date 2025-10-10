@@ -13,8 +13,7 @@ services:
       pip install -r requirements.txt
       echo "=== Running Database Migrations ==="
       export DATABASE_URL="${DATABASE_URL}"
-      cd app/db/alembic
-      alembic upgrade head
+      python -m alembic -c app/db/alembic/alembic.ini upgrade head
       echo "=== Migrations Complete ==="
     startCommand: python start.py
     envVars:
