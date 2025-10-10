@@ -148,10 +148,10 @@ class MedicalRecord(MedicalRecordBase, table=True):
     __table_args__ = {'extend_existing': True}
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    appointment_id: Optional[str] = Field(default=None, foreign_key="appointments.id")
+    appointment_id: Optional[uuid.UUID] = Field(default=None, foreign_key="appointments.id")  # Fixed: UUID not str
     clinic_id: uuid.UUID = Field(foreign_key="clinics.id")
-    doctor_id: Optional[str] = Field(default=None, foreign_key="users.id")
-    patient_id: str = Field(foreign_key="patients.id")
+    doctor_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")  # Fixed: UUID not str
+    patient_id: uuid.UUID = Field(foreign_key="patients.id")  # Fixed: UUID not str
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
@@ -205,10 +205,10 @@ class File(FileBase, table=True):
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     clinic_id: uuid.UUID = Field(foreign_key="clinics.id")
-    uploaded_by: Optional[str] = Field(default=None, foreign_key="users.id")
-    patient_id: Optional[str] = Field(default=None, foreign_key="patients.id")
-    record_id: Optional[str] = Field(default=None, foreign_key="medical_records.id")
-    # appointment_id: Optional[str] = Field(default=None, foreign_key="appointments.id")  # Commented out - column doesn't exist in DB
+    uploaded_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")  # Fixed: UUID not str
+    patient_id: Optional[uuid.UUID] = Field(default=None, foreign_key="patients.id")  # Fixed: UUID not str
+    record_id: Optional[uuid.UUID] = Field(default=None, foreign_key="medical_records.id")  # Fixed: UUID not str
+    # appointment_id: Optional[uuid.UUID] = Field(default=None, foreign_key="appointments.id")  # Commented out - column doesn't exist in DB
     created_at: datetime = Field(default_factory=datetime.now)
     # updated_at: datetime = Field(default_factory=datetime.now)  # Commented out - column doesn't exist in DB
     
@@ -236,7 +236,7 @@ class Invoice(InvoiceBase, table=True):
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     clinic_id: uuid.UUID = Field(foreign_key="clinics.id")
-    patient_id: Optional[str] = Field(default=None, foreign_key="patients.id")
+    patient_id: Optional[uuid.UUID] = Field(default=None, foreign_key="patients.id")  # Fixed: UUID not str
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
