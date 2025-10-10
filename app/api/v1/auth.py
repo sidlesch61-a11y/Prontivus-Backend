@@ -30,18 +30,19 @@ async def register(
 ):
     """Register a new clinic and admin user."""
     try:
-        # Create clinic with explicit type cast for status
+        # Create clinic using raw SQL to properly handle ENUM type
         from sqlalchemy import text
         
+        clinic_id = uuid.uuid4()
+        
         # Insert clinic with explicit ENUM cast
-        result = await db.execute(
+        await db.execute(
             text("""
                 INSERT INTO clinics (id, name, cnpj_cpf, contact_email, contact_phone, status, settings, created_at, updated_at)
-                VALUES (:id, :name, :cnpj_cpf, :contact_email, :contact_phone, :status::clinicstatus, :settings, :created_at, :updated_at)
-                RETURNING id
+                VALUES (:id, :name, :cnpj_cpf, :contact_email, :contact_phone, CAST(:status AS clinicstatus), CAST(:settings AS jsonb), :created_at, :updated_at)
             """),
             {
-                "id": uuid.uuid4(),
+                "id": str(clinic_id),
                 "name": request.clinic.name,
                 "cnpj_cpf": request.clinic.cnpj_cpf,
                 "contact_email": request.clinic.contact_email,
@@ -52,8 +53,6 @@ async def register(
                 "updated_at": datetime.utcnow()
             }
         )
-        clinic_id = result.scalar_one()
-        await db.flush()
         
         # Create admin user
         user = User(
