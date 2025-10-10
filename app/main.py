@@ -108,9 +108,22 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         detail=exc.detail,
         path=request.url.path
     )
+    
+    # Ensure CORS headers are included in error responses
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin and origin in settings.cors_origins_list:
+        headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.detail, "status_code": exc.status_code}
+        content={"error": exc.detail, "status_code": exc.status_code},
+        headers=headers
     )
 
 
@@ -123,9 +136,26 @@ async def general_exception_handler(request: Request, exc: Exception):
         path=request.url.path,
         exc_info=True
     )
+    
+    # Ensure CORS headers are included in error responses
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin and origin in settings.cors_origins_list:
+        headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error", "status_code": 500}
+        content={
+            "error": "Internal server error", 
+            "status_code": 500,
+            "detail": str(exc) if settings.debug else "An error occurred"
+        },
+        headers=headers
     )
 
 
