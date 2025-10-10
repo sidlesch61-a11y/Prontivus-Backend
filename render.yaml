@@ -13,7 +13,8 @@ services:
       echo "========================================="
       echo "RUNNING DATABASE MIGRATIONS"
       echo "========================================="
-      cd app/db/alembic && alembic upgrade head && cd ../../..
+      python -m alembic -c app/db/alembic/alembic.ini current
+      python -m alembic -c app/db/alembic/alembic.ini upgrade head
       echo "========================================="
       echo "MIGRATIONS COMPLETE"
       echo "========================================="
