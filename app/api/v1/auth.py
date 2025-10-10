@@ -84,11 +84,18 @@ async def register(
             await db.flush()
             logger.info(f"Clinic created successfully: {clinic.id}")
         except Exception as clinic_error:
-            logger.error(f"Clinic creation failed: {str(clinic_error)}")
+            logger.error(f"========== CLINIC CREATION ERROR ==========")
+            logger.error(f"Error type: {type(clinic_error).__name__}")
+            logger.error(f"Error message: {str(clinic_error)}")
+            logger.error(f"Error details: {repr(clinic_error)}")
+            logger.error(f"Clinic data: name={clinic.name}, status={clinic.status}, settings={clinic.settings}")
             await db.rollback()
+            
+            # Include the actual error in the response for debugging
+            error_detail = f"Falha ao criar a clínica: {str(clinic_error)}"
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Falha ao criar a clínica. Verifique os dados e tente novamente."
+                detail=error_detail
             )
         
         # Hash password securely
