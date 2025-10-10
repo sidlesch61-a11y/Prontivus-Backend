@@ -35,8 +35,7 @@ async def register(
             name=request.clinic.name,
             cnpj_cpf=request.clinic.cnpj_cpf,
             contact_email=request.clinic.contact_email,
-            contact_phone=request.clinic.contact_phone,
-            status="active"
+            contact_phone=request.clinic.contact_phone
         )
         db.add(clinic)
         await db.flush()  # Get clinic ID
