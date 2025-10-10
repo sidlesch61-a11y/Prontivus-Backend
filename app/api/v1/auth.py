@@ -30,34 +30,20 @@ async def register(
 ):
     """Register a new clinic and admin user."""
     try:
-        # Create clinic using raw SQL
-        from sqlalchemy import text
-        import json
-        
-        clinic_id = uuid.uuid4()
-        
-        # Insert clinic with all required fields
-        await db.execute(
-            text("""
-                INSERT INTO clinics (id, name, cnpj_cpf, contact_email, contact_phone, status, settings, created_at, updated_at)
-                VALUES (:id, :name, :cnpj_cpf, :contact_email, :contact_phone, :status, :settings, :created_at, :updated_at)
-            """),
-            {
-                "id": str(clinic_id),
-                "name": request.clinic.name,
-                "cnpj_cpf": request.clinic.cnpj_cpf,
-                "contact_email": request.clinic.contact_email,
-                "contact_phone": request.clinic.contact_phone,
-                "status": "active",
-                "settings": json.dumps({}),  # Convert to JSON string
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }
+        # Create clinic using ORM
+        clinic = Clinic(
+            name=request.clinic.name,
+            cnpj_cpf=request.clinic.cnpj_cpf,
+            contact_email=request.clinic.contact_email,
+            contact_phone=request.clinic.contact_phone,
+            # Don't set status - let DB use CHECK constraint default or handle it
         )
+        db.add(clinic)
+        await db.flush()  # Get clinic ID
         
         # Create admin user
         user = User(
-            clinic_id=clinic_id,
+            clinic_id=clinic.id,
             name=request.user.name,
             email=request.user.email,
             password_hash=security.hash_password(request.user.password),
@@ -69,13 +55,13 @@ async def register(
         
         # Create audit log
         audit_log = AuditLog(
-            clinic_id=clinic_id,
+            clinic_id=clinic.id,
             user_id=user.id,
             action="clinic_registered",
             entity="clinic",
-            entity_id=clinic_id,
+            entity_id=clinic.id,
             details={
-                "clinic_name": request.clinic.name,
+                "clinic_name": clinic.name,
                 "admin_email": user.email
             }
         )
@@ -84,7 +70,7 @@ async def register(
         await db.commit()
         
         return {
-            "clinic_id": str(clinic_id),
+            "clinic_id": str(clinic.id),
             "user_id": str(user.id),
             "message": "Clinic and admin user created successfully"
         }
