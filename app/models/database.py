@@ -179,7 +179,7 @@ class Prescription(PrescriptionBase, table=True):
     __table_args__ = {'extend_existing': True}
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    record_id: str = Field(foreign_key="medical_records.id")
+    record_id: Optional[uuid.UUID] = Field(default=None, foreign_key="medical_records.id")  # Fixed: UUID not str, Optional
     clinic_id: uuid.UUID = Field(foreign_key="clinics.id")
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
