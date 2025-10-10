@@ -48,7 +48,7 @@ async def register(
             logger.warning(f"Registration failed: Email already exists - {request.user.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email já cadastrado (Email already registered)"
+                detail="E-mail já cadastrado no sistema."
             )
         
         # Validate CNPJ uniqueness
@@ -59,7 +59,7 @@ async def register(
             logger.warning(f"Registration failed: CNPJ already exists - {request.clinic.cnpj_cpf}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="CNPJ/CPF já cadastrado (CNPJ/CPF already registered)"
+                detail="CNPJ/CPF já cadastrado no sistema."
             )
         
         # Create clinic with explicit values
@@ -82,7 +82,7 @@ async def register(
             await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Falha ao criar clínica (Failed to create clinic): {str(clinic_error)}"
+                detail=f"Falha ao criar a clínica. Verifique os dados e tente novamente."
             )
         
         # Hash password securely
@@ -93,7 +93,7 @@ async def register(
             await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Erro ao processar senha (Password processing error)"
+                detail="Erro ao processar a senha. Tente novamente."
             )
         
         # Create admin user
@@ -116,7 +116,7 @@ async def register(
             await db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Falha ao criar usuário (Failed to create user): {str(user_error)}"
+                detail=f"Falha ao criar o usuário. Verifique os dados e tente novamente."
             )
         
         # Create audit log
@@ -145,7 +145,7 @@ async def register(
             "status": "success",
             "clinic_id": str(clinic.id),
             "user_id": str(user.id),
-            "message": "Usuário e clínica cadastrados com sucesso (Clinic and admin user created successfully)"
+            "message": "Clínica e usuário administrador cadastrados com sucesso."
         }
         
     except HTTPException:
@@ -160,17 +160,17 @@ async def register(
         if "email" in error_msg or "users_email" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email já cadastrado (Email already registered)"
+                detail="E-mail já cadastrado no sistema."
             )
         elif "cnpj_cpf" in error_msg or "clinics_cnpj" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="CNPJ/CPF já cadastrado (CNPJ/CPF already registered)"
+                detail="CNPJ/CPF já cadastrado no sistema."
             )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Erro de integridade de dados (Data integrity error): {str(e)}"
+                detail="Erro ao validar os dados. Verifique as informações e tente novamente."
             )
     
     except Exception as e:
@@ -178,7 +178,7 @@ async def register(
         logger.error(f"Unexpected error during registration: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Erro ao processar cadastro (Registration processing error): {str(e)}"
+            detail="Erro inesperado ao processar o cadastro. Tente novamente ou contate o suporte."
         )
 
 
@@ -197,14 +197,14 @@ async def login(
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail="E-mail ou senha incorretos."
         )
     
     # Verify password
     if not security.verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            detail="E-mail ou senha incorretos."
         )
     
     # Update last login
@@ -251,14 +251,14 @@ async def refresh_token(
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
+            detail="Token de atualização inválido."
         )
     
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload"
+            detail="Dados do token inválidos."
         )
     
     # Get user
@@ -270,7 +270,7 @@ async def refresh_token(
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive"
+            detail="Usuário não encontrado ou inativo."
         )
     
     # Create new tokens
@@ -312,7 +312,7 @@ async def logout(
     db.add(audit_log)
     await db.commit()
     
-    return {"message": "Logged out successfully"}
+    return {"message": "Logout realizado com sucesso."}
 
 
 @router.post("/2fa/setup")
@@ -324,7 +324,7 @@ async def setup_two_factor(
     if current_user.twofa_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="2FA already enabled"
+            detail="Autenticação de dois fatores já está ativada."
         )
     
     # Generate TOTP secret
@@ -344,7 +344,7 @@ async def setup_two_factor(
     return {
         "secret": secret,
         "qr_url": qr_url,
-        "message": "Scan QR code with authenticator app"
+        "message": "Escaneie o código QR com seu aplicativo autenticador."
     }
 
 
@@ -358,14 +358,14 @@ async def verify_two_factor(
     if not current_user.twofa_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="2FA not enabled"
+            detail="Autenticação de dois fatores não está ativada."
         )
     
     # Verify TOTP token
     if not security.verify_totp(current_user.twofa_secret, request.token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid 2FA token"
+            detail="Token de autenticação inválido."
         )
     
     # Create audit log
@@ -380,7 +380,7 @@ async def verify_two_factor(
     db.add(audit_log)
     await db.commit()
     
-    return {"message": "2FA verification successful"}
+    return {"message": "Autenticação de dois fatores verificada com sucesso."}
 
 
 @router.post("/2fa/disable")
@@ -393,14 +393,14 @@ async def disable_two_factor(
     if not current_user.twofa_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="2FA not enabled"
+            detail="Autenticação de dois fatores não está ativada."
         )
     
     # Verify TOTP token before disabling
     if not security.verify_totp(current_user.twofa_secret, request.token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid 2FA token"
+            detail="Token de autenticação inválido."
         )
     
     # Disable 2FA
@@ -419,7 +419,7 @@ async def disable_two_factor(
     db.add(audit_log)
     await db.commit()
     
-    return {"message": "2FA disabled successfully"}
+    return {"message": "Autenticação de dois fatores desativada com sucesso."}
 
 
 @router.get("/me", response_model=UserResponse)
