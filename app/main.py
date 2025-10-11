@@ -13,7 +13,7 @@ import structlog
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix  # tiss temporarily disabled
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix  # tiss temporarily disabled
 
 
 # Configure logging
@@ -198,6 +198,7 @@ app.include_router(clinics.router, prefix="/api/v1/clinics", tags=["Clinics"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(patients.router, prefix="/api/v1/patients", tags=["Patients"])
 app.include_router(appointments.router, prefix="/api/v1/appointments", tags=["Appointments"])
+app.include_router(appointment_requests.router, prefix="/api/v1", tags=["Appointment Requests"])  # Patient booking system
 app.include_router(medical_records.router, prefix="/api/v1/medical_records", tags=["Medical Records"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["Files"])
 app.include_router(invoices.router, prefix="/api/v1/invoices", tags=["Invoices"])
