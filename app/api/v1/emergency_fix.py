@@ -83,3 +83,36 @@ async def fix_clinic_status_enum(db: AsyncSession = Depends(get_db_session)):
             "manual_fix": "You may need to execute SQL manually in PostgreSQL"
         }
 
+
+@router.post("/fix-prescription-record-id")
+async def fix_prescription_record_id(db: AsyncSession = Depends(get_db_session)):
+    """
+    EMERGENCY: Make prescriptions.record_id NULLABLE
+    
+    This corresponds to migration 0018 which failed to apply.
+    Call this endpoint ONCE to fix the schema.
+    """
+    try:
+        # Make record_id nullable
+        await db.execute(text("ALTER TABLE prescriptions ALTER COLUMN record_id DROP NOT NULL"))
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "✅ Successfully made prescriptions.record_id NULLABLE",
+            "next_steps": [
+                "1. Test prescription creation at /app/prescriptions",
+                "2. If working, this fix is permanent",
+                "3. You can delete this endpoint after testing"
+            ]
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to fix prescriptions.record_id",
+            "manual_fix": "Execute in PostgreSQL: ALTER TABLE prescriptions ALTER COLUMN record_id DROP NOT NULL"
+        }
+
