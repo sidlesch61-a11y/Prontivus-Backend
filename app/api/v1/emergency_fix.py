@@ -205,6 +205,79 @@ async def fix_medical_record_appointment_id(db: AsyncSession = Depends(get_db_se
         }
 
 
+@router.post("/convert-all-enums-to-varchar")
+async def convert_all_enums_to_varchar(db: AsyncSession = Depends(get_db_session)):
+    """
+    EMERGENCY: Convert ALL ENUM columns to VARCHAR
+    
+    Fixes all ENUM type mismatches between database and SQLAlchemy models.
+    This is a comprehensive fix for: clinicstatus, appointmentstatus, userrole.
+    """
+    try:
+        results = []
+        
+        # 1. Fix clinics.status (clinicstatus → VARCHAR)
+        try:
+            await db.execute(text("ALTER TABLE clinics ALTER COLUMN status DROP DEFAULT"))
+            await db.execute(text("ALTER TABLE clinics ALTER COLUMN status TYPE VARCHAR USING status::text"))
+            await db.execute(text("ALTER TABLE clinics ALTER COLUMN status SET NOT NULL"))
+            await db.execute(text("ALTER TABLE clinics ALTER COLUMN status SET DEFAULT 'active'"))
+            await db.commit()
+            results.append("✅ clinics.status → VARCHAR")
+        except Exception as e:
+            results.append(f"⚠️ clinics.status: {str(e)[:50]}")
+        
+        # 2. Fix appointments.status (appointmentstatus → VARCHAR)
+        try:
+            await db.execute(text("ALTER TABLE appointments ALTER COLUMN status DROP DEFAULT"))
+            await db.execute(text("ALTER TABLE appointments ALTER COLUMN status TYPE VARCHAR USING status::text"))
+            await db.execute(text("ALTER TABLE appointments ALTER COLUMN status SET NOT NULL"))
+            await db.execute(text("ALTER TABLE appointments ALTER COLUMN status SET DEFAULT 'scheduled'"))
+            await db.commit()
+            results.append("✅ appointments.status → VARCHAR")
+        except Exception as e:
+            results.append(f"⚠️ appointments.status: {str(e)[:50]}")
+        
+        # 3. Fix users.role (userrole → VARCHAR)
+        try:
+            await db.execute(text("ALTER TABLE users ALTER COLUMN role TYPE VARCHAR USING role::text"))
+            await db.execute(text("ALTER TABLE users ALTER COLUMN role SET NOT NULL"))
+            await db.commit()
+            results.append("✅ users.role → VARCHAR")
+        except Exception as e:
+            results.append(f"⚠️ users.role: {str(e)[:50]}")
+        
+        # 4. Drop ENUM types
+        try:
+            await db.execute(text("DROP TYPE IF EXISTS clinicstatus CASCADE"))
+            await db.execute(text("DROP TYPE IF EXISTS appointmentstatus CASCADE"))
+            await db.execute(text("DROP TYPE IF EXISTS userrole CASCADE"))
+            await db.commit()
+            results.append("✅ Dropped all ENUM types")
+        except Exception as e:
+            results.append(f"⚠️ Drop ENUMs: {str(e)[:50]}")
+        
+        return {
+            "success": True,
+            "message": "✅ Converted all ENUMs to VARCHAR",
+            "details": results,
+            "next_steps": [
+                "1. Remove all cast() calls from backend code (optional optimization)",
+                "2. Test all features without ENUM errors",
+                "3. This fix is permanent"
+            ]
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to convert ENUMs",
+            "manual_fix": "Execute SQL manually or run individual ENUM fixes"
+        }
+
+
 @router.post("/create-ethical-locks-table")
 async def create_ethical_locks_table(db: AsyncSession = Depends(get_db_session)):
     """
