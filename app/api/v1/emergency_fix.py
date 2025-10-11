@@ -116,3 +116,57 @@ async def fix_prescription_record_id(db: AsyncSession = Depends(get_db_session))
             "manual_fix": "Execute in PostgreSQL: ALTER TABLE prescriptions ALTER COLUMN record_id DROP NOT NULL"
         }
 
+
+@router.post("/fix-appointment-status-enum")
+async def fix_appointment_status_enum(db: AsyncSession = Depends(get_db_session)):
+    """
+    EMERGENCY: Convert appointments.status from ENUM to VARCHAR
+    
+    The database has 'appointmentstatus' ENUM but SQLAlchemy model uses str.
+    This causes operator errors when comparing status values.
+    Call this endpoint ONCE to fix the schema.
+    """
+    try:
+        # Step 1: Drop default
+        await db.execute(text("ALTER TABLE appointments ALTER COLUMN status DROP DEFAULT"))
+        await db.commit()
+        
+        # Step 2: Convert to VARCHAR
+        await db.execute(text("""
+            ALTER TABLE appointments 
+            ALTER COLUMN status TYPE VARCHAR 
+            USING status::text
+        """))
+        await db.commit()
+        
+        # Step 3: Set NOT NULL
+        await db.execute(text("ALTER TABLE appointments ALTER COLUMN status SET NOT NULL"))
+        await db.commit()
+        
+        # Step 4: Set DEFAULT
+        await db.execute(text("ALTER TABLE appointments ALTER COLUMN status SET DEFAULT 'scheduled'"))
+        await db.commit()
+        
+        # Step 5: Drop ENUM type
+        await db.execute(text("DROP TYPE IF EXISTS appointmentstatus CASCADE"))
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "✅ Successfully converted appointments.status from ENUM to VARCHAR",
+            "next_steps": [
+                "1. Test appointment creation at /app/appointments",
+                "2. If working, this fix is permanent",
+                "3. You can delete this endpoint after testing"
+            ]
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to fix appointments.status",
+            "manual_fix": "Execute SQL manually to convert ENUM to VARCHAR"
+        }
+
