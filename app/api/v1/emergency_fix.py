@@ -496,3 +496,115 @@ async def delete_all_data_except_users(db: AsyncSession = Depends(get_db_session
             "message": "❌ Failed to clean database"
         }
 
+
+@router.post("/delete-everything-except-admin")
+async def delete_everything_except_admin(db: AsyncSession = Depends(get_db_session)):
+    """
+    🔥 NUCLEAR OPTION: Delete EVERYTHING except admin@clinica.com.br and their clinic
+    
+    This will DELETE:
+    - ALL other users
+    - ALL other clinics
+    - ALL appointments
+    - ALL medical records
+    - ALL prescriptions
+    - ALL patients
+    - ALL files
+    - ALL invoices
+    - ALL audit logs
+    - ALL sync events
+    - ALL waiting queue entries
+    - ALL ethical locks
+    
+    This will PRESERVE ONLY:
+    - User: admin@clinica.com.br
+    - Their associated clinic
+    
+    ⚠️⚠️⚠️ EXTREME DANGER - THIS CANNOT BE UNDONE! ⚠️⚠️⚠️
+    """
+    try:
+        # Find the admin user
+        from sqlalchemy import select
+        result = await db.execute(
+            text("SELECT id, clinic_id FROM users WHERE email = 'admin@clinica.com.br'")
+        )
+        admin_user = result.fetchone()
+        
+        if not admin_user:
+            return {
+                "success": False,
+                "error": "Admin user not found",
+                "message": "❌ Could not find admin@clinica.com.br"
+            }
+        
+        admin_user_id = str(admin_user[0])
+        admin_clinic_id = str(admin_user[1])
+        
+        deleted_counts = {}
+        
+        # Step 1: Delete all data from child tables (no conditions needed)
+        child_tables = [
+            "files",
+            "ethical_locks",
+            "prescriptions",
+            "medical_records",
+            "appointments",
+            "waiting_queue",
+            "patients",
+            "invoices",
+            "sync_events",
+            "audit_logs",
+        ]
+        
+        for table in child_tables:
+            try:
+                result = await db.execute(text(f"DELETE FROM {table}"))
+                deleted_counts[table] = result.rowcount
+                await db.commit()
+            except Exception as e:
+                deleted_counts[table] = f"Error: {str(e)[:50]}"
+                await db.rollback()
+        
+        # Step 2: Delete all users EXCEPT admin@clinica.com.br
+        try:
+            result = await db.execute(
+                text(f"DELETE FROM users WHERE email != 'admin@clinica.com.br'")
+            )
+            deleted_counts["users (other)"] = result.rowcount
+            await db.commit()
+        except Exception as e:
+            deleted_counts["users (other)"] = f"Error: {str(e)[:50]}"
+            await db.rollback()
+        
+        # Step 3: Delete all clinics EXCEPT the admin's clinic
+        try:
+            result = await db.execute(
+                text(f"DELETE FROM clinics WHERE id != :clinic_id"),
+                {"clinic_id": admin_clinic_id}
+            )
+            deleted_counts["clinics (other)"] = result.rowcount
+            await db.commit()
+        except Exception as e:
+            deleted_counts["clinics (other)"] = f"Error: {str(e)[:50]}"
+            await db.rollback()
+        
+        return {
+            "success": True,
+            "message": "🔥 NUCLEAR CLEANUP COMPLETE - Only admin@clinica.com.br remains",
+            "deleted_counts": deleted_counts,
+            "preserved": {
+                "user": "admin@clinica.com.br",
+                "user_id": admin_user_id,
+                "clinic_id": admin_clinic_id
+            },
+            "warning": "⚠️⚠️⚠️ ALL OTHER DATA HAS BEEN PERMANENTLY DELETED! ⚠️⚠️⚠️"
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to complete nuclear cleanup"
+        }
+
