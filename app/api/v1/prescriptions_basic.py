@@ -47,30 +47,41 @@ async def create_prescription(
         if hasattr(prescription_data, 'medications') and prescription_data.medications:
             # New format: array of medications
             for medication in prescription_data.medications:
-                prescription = PrescriptionDB(
-                    clinic_id=current_user.clinic_id,
-                    record_id=prescription_data.record_id if hasattr(prescription_data, 'record_id') else None,
-                    medication_name=medication.medication_name,
-                    dosage=medication.dosage,
-                    frequency=medication.frequency,
-                    duration=medication.duration,
-                    notes=prescription_data.notes,
-                    created_at=datetime.now()
-                )
+                # Build prescription dict - only include record_id if not None (DB constraint workaround)
+                prescription_dict = {
+                    "clinic_id": current_user.clinic_id,
+                    "medication_name": medication.medication_name,
+                    "dosage": medication.dosage,
+                    "frequency": medication.frequency,
+                    "duration": medication.duration,
+                    "notes": prescription_data.notes,
+                    "created_at": datetime.now()
+                }
+                
+                # Only add record_id if provided (DB has NOT NULL constraint until migration runs)
+                if hasattr(prescription_data, 'record_id') and prescription_data.record_id is not None:
+                    prescription_dict["record_id"] = prescription_data.record_id
+                
+                prescription = PrescriptionDB(**prescription_dict)
                 db.add(prescription)
                 created_prescriptions.append(prescription)
         else:
             # Old format: single medication
-            prescription = PrescriptionDB(
-                clinic_id=current_user.clinic_id,
-                record_id=prescription_data.record_id if hasattr(prescription_data, 'record_id') else None,
-                medication_name=prescription_data.medication_name,
-                dosage=prescription_data.dosage,
-                frequency=prescription_data.frequency,
-                duration=prescription_data.duration,
-                notes=prescription_data.notes,
-                created_at=datetime.now()
-            )
+            prescription_dict = {
+                "clinic_id": current_user.clinic_id,
+                "medication_name": prescription_data.medication_name,
+                "dosage": prescription_data.dosage,
+                "frequency": prescription_data.frequency,
+                "duration": prescription_data.duration,
+                "notes": prescription_data.notes,
+                "created_at": datetime.now()
+            }
+            
+            # Only add record_id if provided
+            if hasattr(prescription_data, 'record_id') and prescription_data.record_id is not None:
+                prescription_dict["record_id"] = prescription_data.record_id
+            
+            prescription = PrescriptionDB(**prescription_dict)
             db.add(prescription)
             created_prescriptions.append(prescription)
         
