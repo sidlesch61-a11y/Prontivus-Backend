@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, text
+from sqlalchemy import select, and_, func, text, cast, String
 from sqlalchemy.exc import IntegrityError
 
 from app.core.auth import get_current_user, require_appointments_read, require_appointments_write
@@ -121,11 +121,12 @@ async def create_appointment(
         lock_acquired = True
         
         # Check for overlapping appointments
+        # Cast status to String to avoid ENUM type mismatch with PostgreSQL
         overlap_query = select(func.count(Appointment.id)).where(
             and_(
                 Appointment.doctor_id == appointment_data.doctor_id,
                 Appointment.clinic_id == current_user.clinic_id,
-                Appointment.status.in_(["scheduled", "checked_in", "in_progress"]),
+                cast(Appointment.status, String).in_(["scheduled", "checked_in", "in_progress"]),
                 Appointment.start_time < appointment_data.end_time,
                 Appointment.end_time > appointment_data.start_time
             )

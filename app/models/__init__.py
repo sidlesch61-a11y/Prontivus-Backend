@@ -43,6 +43,7 @@ class ClinicStatus(str, Enum):
 class AppointmentStatus(str, Enum):
     SCHEDULED = "scheduled"
     CONFIRMED = "confirmed"
+    CHECKED_IN = "checked_in"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
