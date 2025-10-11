@@ -78,27 +78,13 @@ async def register(
         now = datetime.utcnow()
         
         try:
-            # Use raw SQL to explicitly cast status to the ENUM type
-            # First, try to query what values the ENUM accepts
-            result = await db.execute(text("""
-                SELECT enumlabel FROM pg_enum 
-                WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'clinicstatus')
-                ORDER BY enumsortorder
-            """))
-            enum_values = [row[0] for row in result.fetchall()]
-            logger.info(f"Available ENUM values: {enum_values}")
-            
-            # Determine the correct status value
-            status_value = 'active' if 'active' in enum_values else (enum_values[0] if enum_values else 'active')
-            logger.info(f"Using status value: {status_value}")
-            
-            # Insert using raw SQL with CAST to enum - use CAST() function instead of ::
+            # Insert clinic with VARCHAR status (ENUMs have been converted to VARCHAR)
             await db.execute(
                 text("""
                     INSERT INTO clinics 
                     (id, name, cnpj_cpf, contact_email, contact_phone, logo_url, settings, status, created_at, updated_at)
                     VALUES 
-                    (:id, :name, :cnpj, :email, :phone, :logo, CAST(:settings AS jsonb), CAST(:status AS clinicstatus), :created, :updated)
+                    (:id, :name, :cnpj, :email, :phone, :logo, CAST(:settings AS jsonb), :status, :created, :updated)
                 """),
                 {
                     "id": str(clinic_id),
@@ -108,7 +94,7 @@ async def register(
                     "phone": request.clinic.contact_phone,
                     "logo": None,
                     "settings": json.dumps({}),
-                    "status": status_value,
+                    "status": "active",
                     "created": now,
                     "updated": now
                 }
