@@ -170,3 +170,37 @@ async def fix_appointment_status_enum(db: AsyncSession = Depends(get_db_session)
             "manual_fix": "Execute SQL manually to convert ENUM to VARCHAR"
         }
 
+
+@router.post("/fix-medical-record-appointment-id")
+async def fix_medical_record_appointment_id(db: AsyncSession = Depends(get_db_session)):
+    """
+    EMERGENCY: Make medical_records.appointment_id NULLABLE
+    
+    The application allows creating medical records without appointments,
+    but the database requires appointment_id to be NOT NULL.
+    Call this endpoint ONCE to fix the schema.
+    """
+    try:
+        # Make appointment_id nullable
+        await db.execute(text("ALTER TABLE medical_records ALTER COLUMN appointment_id DROP NOT NULL"))
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "✅ Successfully made medical_records.appointment_id NULLABLE",
+            "next_steps": [
+                "1. Test medical record creation at /app/medical-records",
+                "2. If working, this fix is permanent",
+                "3. You can delete this endpoint after testing"
+            ]
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to fix medical_records.appointment_id",
+            "manual_fix": "Execute in PostgreSQL: ALTER TABLE medical_records ALTER COLUMN appointment_id DROP NOT NULL"
+        }
+
