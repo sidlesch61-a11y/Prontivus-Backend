@@ -372,3 +372,57 @@ async def create_ethical_locks_table(db: AsyncSession = Depends(get_db_session))
             "manual_fix": "Check if table already exists or execute SQL manually"
         }
 
+
+@router.post("/fix-appointment-source-column")
+async def fix_appointment_source_column(db: AsyncSession = Depends(get_db_session)):
+    """
+    EMERGENCY: Fix appointments.source column NOT NULL constraint
+    
+    Makes the column nullable OR adds a default value of 'manual'.
+    """
+    try:
+        # Option 1: Make it nullable
+        await db.execute(text("""
+            ALTER TABLE appointments 
+            ALTER COLUMN source DROP NOT NULL
+        """))
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "✅ appointments.source is now nullable",
+            "next_steps": [
+                "1. Try creating an appointment again",
+                "2. If working, this fix is permanent",
+                "3. Consider adding 'source' field to the model with a default value"
+            ]
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        
+        # If column doesn't exist, try to add it
+        try:
+            await db.execute(text("""
+                ALTER TABLE appointments 
+                ADD COLUMN IF NOT EXISTS source VARCHAR DEFAULT 'manual'
+            """))
+            await db.commit()
+            
+            return {
+                "success": True,
+                "message": "✅ Added source column with default 'manual'",
+                "next_steps": [
+                    "1. Try creating an appointment again",
+                    "2. If working, this fix is permanent"
+                ]
+            }
+        except Exception as e2:
+            await db.rollback()
+            return {
+                "success": False,
+                "error": f"First attempt: {str(e)}, Second attempt: {str(e2)}",
+                "message": "❌ Failed to fix appointments.source",
+                "manual_fix": "ALTER TABLE appointments ALTER COLUMN source DROP NOT NULL;"
+            }
+
