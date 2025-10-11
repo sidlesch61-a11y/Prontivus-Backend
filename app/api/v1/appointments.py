@@ -110,9 +110,13 @@ async def create_appointment(
 ):
     """Create a new appointment with concurrency control."""
     
+    # Convert timezone-aware datetimes to timezone-naive (database uses TIMESTAMP WITHOUT TIME ZONE)
+    start_time = appointment_data.start_time.replace(tzinfo=None) if appointment_data.start_time.tzinfo else appointment_data.start_time
+    end_time = appointment_data.end_time.replace(tzinfo=None) if appointment_data.end_time.tzinfo else appointment_data.end_time
+    
     # Use PostgreSQL advisory lock to prevent double-booking
     # Lock based on doctor_id and appointment time
-    lock_id = hash(f"{appointment_data.doctor_id}_{appointment_data.start_time.date()}")
+    lock_id = hash(f"{appointment_data.doctor_id}_{start_time.date()}")
     
     lock_acquired = False
     try:
@@ -127,8 +131,8 @@ async def create_appointment(
                 Appointment.doctor_id == appointment_data.doctor_id,
                 Appointment.clinic_id == current_user.clinic_id,
                 cast(Appointment.status, String).in_(["scheduled", "checked_in", "in_progress"]),
-                Appointment.start_time < appointment_data.end_time,
-                Appointment.end_time > appointment_data.start_time
+                Appointment.start_time < end_time,
+                Appointment.end_time > start_time
             )
         )
         
@@ -172,10 +176,14 @@ async def create_appointment(
                 detail="Doctor not found"
             )
         
-        # Create appointment
+        # Create appointment with timezone-naive datetimes
+        appointment_dict = appointment_data.dict()
+        appointment_dict['start_time'] = start_time
+        appointment_dict['end_time'] = end_time
+        
         appointment = Appointment(
             clinic_id=current_user.clinic_id,
-            **appointment_data.dict()
+            **appointment_dict
         )
         db.add(appointment)
         await db.flush()  # Get appointment ID
@@ -190,8 +198,8 @@ async def create_appointment(
             details={
                 "patient_id": str(appointment.patient_id),
                 "doctor_id": str(appointment.doctor_id),
-                "start_time": appointment.start_time.isoformat(),
-                "end_time": appointment.end_time.isoformat()
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat()
             }
         )
         db.add(audit_log)
