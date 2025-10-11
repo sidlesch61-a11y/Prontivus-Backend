@@ -162,11 +162,12 @@ async def create_appointment(
         
         # Verify doctor exists and belongs to clinic
         # Cast role to String to avoid ENUM type mismatch
+        # Check both lowercase and uppercase variants
         doctor_result = await db.execute(
             select(User).where(
                 User.id == appointment_data.doctor_id,
                 User.clinic_id == current_user.clinic_id,
-                cast(User.role, String).in_(["doctor", "admin", "superadmin"])
+                cast(User.role, String).in_(["doctor", "admin", "superadmin", "DOCTOR", "ADMIN", "SUPERADMIN"])
             )
         )
         doctor = doctor_result.scalar_one_or_none()
