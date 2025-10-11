@@ -426,3 +426,73 @@ async def fix_appointment_source_column(db: AsyncSession = Depends(get_db_sessio
                 "manual_fix": "ALTER TABLE appointments ALTER COLUMN source DROP NOT NULL;"
             }
 
+
+@router.post("/delete-all-data-except-users")
+async def delete_all_data_except_users(db: AsyncSession = Depends(get_db_session)):
+    """
+    ⚠️ DANGEROUS: Delete ALL data from database EXCEPT users and clinics
+    
+    This will DELETE:
+    - All appointments
+    - All medical records
+    - All prescriptions
+    - All patients
+    - All files
+    - All invoices
+    - All audit logs
+    - All sync events
+    - All waiting queue entries
+    - All ethical locks
+    
+    This will PRESERVE:
+    - All users
+    - All clinics
+    
+    USE WITH EXTREME CAUTION - THIS CANNOT BE UNDONE!
+    """
+    try:
+        deleted_counts = {}
+        
+        # Delete in correct order to respect foreign key constraints
+        tables_to_delete = [
+            "files",
+            "ethical_locks",
+            "prescriptions",
+            "medical_records",
+            "appointments",
+            "waiting_queue",
+            "patients",
+            "invoices",
+            "sync_events",
+            "audit_logs",
+        ]
+        
+        for table in tables_to_delete:
+            try:
+                result = await db.execute(text(f"DELETE FROM {table}"))
+                deleted_counts[table] = result.rowcount
+                await db.commit()
+            except Exception as e:
+                # If table doesn't exist or has issues, continue
+                deleted_counts[table] = f"Error: {str(e)[:50]}"
+                await db.rollback()
+        
+        return {
+            "success": True,
+            "message": "✅ Database cleaned successfully (users and clinics preserved)",
+            "deleted_counts": deleted_counts,
+            "preserved": [
+                "users",
+                "clinics"
+            ],
+            "warning": "⚠️ This action cannot be undone!"
+        }
+    
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to clean database"
+        }
+
