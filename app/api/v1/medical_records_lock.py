@@ -43,7 +43,9 @@ async def lock_medical_record(
     
     **Only doctors can lock records.**
     """
-    from app.models.database import MedicalRecord, EthicalLock
+    from app.models.database import MedicalRecord
+    from app.models.ethical_locks import EthicalLock, LockType, LockStatus
+    from datetime import timedelta
     
     # Check if user is a doctor
     user_role = getattr(current_user, "role", "").lower()
@@ -62,24 +64,29 @@ async def lock_medical_record(
         raise HTTPException(status_code=404, detail="Medical record not found")
     
     # Check if already locked
-    if hasattr(record, 'is_locked') and record.is_locked:
+    existing_lock_stmt = select(EthicalLock).where(
+        EthicalLock.resource_id == record.id,
+        EthicalLock.resource_type == "medical_record",
+        EthicalLock.status == LockStatus.ACTIVE
+    )
+    existing_lock_result = await db.execute(existing_lock_stmt)
+    if existing_lock_result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Record is already locked")
     
     # Lock the record
-    # Since the current schema doesn't have is_locked field, we'll create an ethical lock
-    
     try:
-        # Create ethical lock entry
+        # Create ethical lock entry with correct field names
         ethical_lock = EthicalLock(
             id=uuid.uuid4(),
-            record_type="medical_record",
-            record_id=record.id,
             clinic_id=record.clinic_id,
+            lock_type=LockType.RECORD_FINALIZATION,  # Use proper enum
+            resource_id=record.id,  # Correct field name
+            resource_type="medical_record",  # Correct field name
             locked_by=current_user.id,
             locked_at=datetime.now(),
+            lock_expires_at=datetime.now() + timedelta(days=36500),  # ~100 years (permanent)
+            status=LockStatus.ACTIVE,
             reason=request.reason or "Record finalized by doctor",
-            hash_signature=f"md5:{record.id}",  # Simplified for now
-            can_unlock=False,  # Cannot be unlocked once finalized
         )
         
         db.add(ethical_lock)
@@ -110,12 +117,12 @@ async def unlock_medical_record(
     **WARNING:** Unlocking finalized records should be rare and audited.
     Only admins can unlock records.
     """
-    from app.models.database import EthicalLock
+    from app.models.ethical_locks import EthicalLock, LockStatus
     
     # Find the ethical lock
     stmt = select(EthicalLock).where(
-        EthicalLock.record_id == uuid.UUID(record_id),
-        EthicalLock.record_type == "medical_record"
+        EthicalLock.resource_id == uuid.UUID(record_id),  # Correct field name
+        EthicalLock.resource_type == "medical_record"
     )
     result = await db.execute(stmt)
     lock = result.scalar_one_or_none()
@@ -123,14 +130,16 @@ async def unlock_medical_record(
     if not lock:
         raise HTTPException(status_code=404, detail="No lock found for this record")
     
-    if not lock.can_unlock:
+    # Check if lock is permanent (expires > 10 years from now)
+    if lock.lock_expires_at and (lock.lock_expires_at - datetime.now()).days > 3650:
         raise HTTPException(
             status_code=403,
             detail="This record cannot be unlocked (finalized records)"
         )
     
-    # Delete the lock
-    await db.delete(lock)
+    # Update lock status to released
+    lock.status = LockStatus.RELEASED
+    lock.released_at = datetime.now()
     await db.commit()
     
     return LockRecordResponse(
@@ -148,11 +157,12 @@ async def check_lock_status(
     current_user = Depends(AuthDependencies.get_current_user),
 ):
     """Check if a medical record is locked."""
-    from app.models.database import EthicalLock
+    from app.models.ethical_locks import EthicalLock, LockStatus
     
     stmt = select(EthicalLock).where(
-        EthicalLock.record_id == uuid.UUID(record_id),
-        EthicalLock.record_type == "medical_record"
+        EthicalLock.resource_id == uuid.UUID(record_id),  # Correct field name
+        EthicalLock.resource_type == "medical_record",
+        EthicalLock.status == LockStatus.ACTIVE  # Only check active locks
     )
     result = await db.execute(stmt)
     lock = result.scalar_one_or_none()
@@ -164,13 +174,16 @@ async def check_lock_status(
             "message": "Record is unlocked and can be edited"
         }
     
+    # Check if lock is permanent
+    can_unlock = lock.lock_expires_at and (lock.lock_expires_at - datetime.now()).days <= 3650
+    
     return {
         "is_locked": True,
         "can_edit": False,
         "locked_at": lock.locked_at.isoformat(),
         "locked_by": str(lock.locked_by),
-        "reason": lock.reason,
-        "can_unlock": lock.can_unlock,
+        "reason": lock.reason or "Record locked",
+        "can_unlock": can_unlock,
         "message": "Record is locked and cannot be edited"
     }
 
