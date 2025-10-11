@@ -42,57 +42,79 @@ async def create_prescription(
         
         # Create prescription(s) - support both single and multiple medications
         created_prescriptions = []
+        prescription_ids = []
         
         # Check if this has medications list (new format)
         if hasattr(prescription_data, 'medications') and prescription_data.medications:
             # New format: array of medications
+            # Use RAW SQL to insert WITHOUT record_id field (DB constraint workaround)
+            from sqlalchemy import text
+            import uuid as uuid_module
+            
             for medication in prescription_data.medications:
-                # Build prescription dict - only include record_id if not None (DB constraint workaround)
-                prescription_dict = {
-                    "clinic_id": current_user.clinic_id,
-                    "medication_name": medication.medication_name,
-                    "dosage": medication.dosage,
-                    "frequency": medication.frequency,
-                    "duration": medication.duration,
-                    "notes": prescription_data.notes,
-                    "created_at": datetime.now()
-                }
+                prescription_id = uuid_module.uuid4()
+                now = datetime.now()
                 
-                # Only add record_id if provided (DB has NOT NULL constraint until migration runs)
-                if hasattr(prescription_data, 'record_id') and prescription_data.record_id is not None:
-                    prescription_dict["record_id"] = prescription_data.record_id
-                
-                prescription = PrescriptionDB(**prescription_dict)
-                db.add(prescription)
-                created_prescriptions.append(prescription)
+                # Use raw SQL - only insert columns that exist and are needed
+                await db.execute(
+                    text("""
+                        INSERT INTO prescriptions 
+                        (id, medication_name, dosage, frequency, duration, notes, clinic_id, created_at, updated_at)
+                        VALUES 
+                        (:id, :medication_name, :dosage, :frequency, :duration, :notes, :clinic_id, :created_at, :updated_at)
+                    """),
+                    {
+                        "id": str(prescription_id),
+                        "medication_name": medication.medication_name,
+                        "dosage": medication.dosage,
+                        "frequency": medication.frequency or "",
+                        "duration": medication.duration or "",
+                        "notes": prescription_data.notes or "",
+                        "clinic_id": str(current_user.clinic_id),
+                        "created_at": now,
+                        "updated_at": now
+                    }
+                )
+                prescription_ids.append(prescription_id)
         else:
-            # Old format: single medication
-            prescription_dict = {
-                "clinic_id": current_user.clinic_id,
-                "medication_name": prescription_data.medication_name,
-                "dosage": prescription_data.dosage,
-                "frequency": prescription_data.frequency,
-                "duration": prescription_data.duration,
-                "notes": prescription_data.notes,
-                "created_at": datetime.now()
-            }
+            # Old format: single medication (also use raw SQL)
+            from sqlalchemy import text
+            import uuid as uuid_module
             
-            # Only add record_id if provided
-            if hasattr(prescription_data, 'record_id') and prescription_data.record_id is not None:
-                prescription_dict["record_id"] = prescription_data.record_id
+            prescription_id = uuid_module.uuid4()
+            now = datetime.now()
             
-            prescription = PrescriptionDB(**prescription_dict)
-            db.add(prescription)
-            created_prescriptions.append(prescription)
+            await db.execute(
+                text("""
+                    INSERT INTO prescriptions 
+                    (id, medication_name, dosage, frequency, duration, notes, clinic_id, created_at, updated_at)
+                    VALUES 
+                    (:id, :medication_name, :dosage, :frequency, :duration, :notes, :clinic_id, :created_at, :updated_at)
+                """),
+                {
+                    "id": str(prescription_id),
+                    "medication_name": prescription_data.medication_name,
+                    "dosage": prescription_data.dosage,
+                    "frequency": prescription_data.frequency or "",
+                    "duration": prescription_data.duration or "",
+                    "notes": prescription_data.notes or "",
+                    "clinic_id": str(current_user.clinic_id),
+                    "created_at": now,
+                    "updated_at": now
+                }
+            )
+            prescription_ids.append(prescription_id)
         
         await db.commit()
         
-        # Refresh all
-        for prescription in created_prescriptions:
-            await db.refresh(prescription)
+        # Fetch the created prescription(s) to return
+        result = await db.execute(
+            select(PrescriptionDB).where(PrescriptionDB.id == prescription_ids[0])
+        )
+        first_prescription = result.scalar_one()
         
-        # Return first prescription for backward compatibility
-        response = PrescriptionResponse.from_orm(created_prescriptions[0])
+        # Return response
+        response = PrescriptionResponse.from_orm(first_prescription)
         response.patient_name = patient.name
         response.doctor_name = current_user.name
         
