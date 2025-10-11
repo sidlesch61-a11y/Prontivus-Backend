@@ -497,6 +497,77 @@ async def delete_all_data_except_users(db: AsyncSession = Depends(get_db_session
         }
 
 
+@router.post("/create-appointment-requests-table")
+async def create_appointment_requests_table(db: AsyncSession = Depends(get_db_session)):
+    """
+    🆕 CREATE appointment_requests table (migration 0019)
+    
+    Creates the appointment_requests table for patient online booking system.
+    
+    Run this if migration fails or to create table manually.
+    """
+    try:
+        from sqlalchemy import text
+        
+        # Create appointment_requests table
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS appointment_requests (
+                id UUID PRIMARY KEY,
+                clinic_id UUID NOT NULL,
+                patient_id UUID NOT NULL,
+                doctor_id UUID NULL,
+                preferred_date VARCHAR NOT NULL,
+                preferred_time VARCHAR NULL,
+                reason TEXT NOT NULL,
+                notes TEXT NULL,
+                status VARCHAR NOT NULL DEFAULT 'pending',
+                requested_at TIMESTAMP NOT NULL,
+                reviewed_at TIMESTAMP NULL,
+                reviewed_by UUID NULL,
+                rejection_reason TEXT NULL,
+                approved_appointment_id UUID NULL,
+                approved_start_time TIMESTAMP NULL,
+                approved_end_time TIMESTAMP NULL,
+                CONSTRAINT fk_appointment_requests_clinic 
+                    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+                CONSTRAINT fk_appointment_requests_patient 
+                    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+                CONSTRAINT fk_appointment_requests_doctor 
+                    FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE SET NULL,
+                CONSTRAINT fk_appointment_requests_reviewed_by 
+                    FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
+                CONSTRAINT fk_appointment_requests_appointment 
+                    FOREIGN KEY (approved_appointment_id) REFERENCES appointments(id) ON DELETE SET NULL
+            )
+        """))
+        await db.commit()
+        
+        # Create indexes
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_appointment_requests_clinic ON appointment_requests(clinic_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_appointment_requests_patient ON appointment_requests(patient_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_appointment_requests_status ON appointment_requests(status)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_appointment_requests_requested_at ON appointment_requests(requested_at)"))
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "✅ appointment_requests table created successfully",
+            "details": {
+                "table": "appointment_requests",
+                "indexes": 4,
+                "foreign_keys": 5
+            }
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "❌ Failed to create appointment_requests table"
+        }
+
+
 @router.post("/delete-everything-except-admin")
 async def delete_everything_except_admin(db: AsyncSession = Depends(get_db_session)):
     """
