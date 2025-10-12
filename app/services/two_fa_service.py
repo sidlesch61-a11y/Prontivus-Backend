@@ -3,6 +3,7 @@ Two-Factor Authentication Service
 Handles TOTP generation, verification, and QR code creation
 """
 
+import uuid
 import pyotp
 import qrcode
 import io
@@ -24,7 +25,7 @@ class TwoFAService:
     def __init__(self):
         # In production, get this from environment variable
         # For now, using a consistent key (CHANGE THIS IN PRODUCTION!)
-        self.encryption_key = settings.SECRET_KEY[:32].ljust(32, '0').encode()
+        self.encryption_key = settings.secret_key[:32].ljust(32, '0').encode()
         self.fernet = Fernet(base64.urlsafe_b64encode(self.encryption_key))
     
     def generate_secret(self) -> str:
