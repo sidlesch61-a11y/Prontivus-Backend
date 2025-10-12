@@ -86,6 +86,14 @@ class LicenseStatus(str, Enum):
     SUSPENDED = "suspended"
     CANCELLED = "cancelled"
 
+# Import 2FA models
+from app.models.two_fa import (
+    TwoFASecret,
+    TwoFAStatus,
+    SecuritySettings,
+    LoginAttempt
+)
+
 # Re-export for backwards compatibility
 __all__ = [
     "User",
@@ -107,5 +115,9 @@ __all__ = [
     "LicenseStatus",
     "ActivationStatus",
     "BaseModel",
-    "TenantModel"
+    "TenantModel",
+    "TwoFASecret",
+    "TwoFAStatus",
+    "SecuritySettings",
+    "LoginAttempt"
 ]
