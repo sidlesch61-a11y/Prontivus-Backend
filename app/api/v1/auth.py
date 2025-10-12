@@ -225,16 +225,37 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: LoginRequest,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    request_obj: Request = None
 ):
-    """Authenticate user and return tokens."""
+    """Authenticate user and return tokens with 2FA support."""
+    from app.models.two_fa import TwoFASecret, TwoFAStatus, LoginAttempt
+    from app.services.two_fa_service import two_fa_service
+    
     # Get user by email
     result = await db.execute(
         select(User).where(User.email == request.email)
     )
     user = result.scalar_one_or_none()
     
+    # Get IP and user agent for audit
+    ip_address = request_obj.client.host if request_obj else None
+    user_agent = request_obj.headers.get("user-agent") if request_obj else None
+    
+    # Create login attempt record
+    login_attempt = LoginAttempt(
+        user_id=user.id if user else None,
+        email=request.email,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        success=False,
+        attempted_at=datetime.utcnow()
+    )
+    
     if not user or not user.is_active:
+        login_attempt.failure_reason = "invalid_credentials"
+        db.add(login_attempt)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos."
@@ -242,13 +263,62 @@ async def login(
     
     # Verify password
     if not security.verify_password(request.password, user.password_hash):
+        login_attempt.failure_reason = "invalid_password"
+        db.add(login_attempt)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos."
         )
     
+    # Check if user has 2FA enabled
+    result = await db.execute(
+        select(TwoFASecret).where(
+            TwoFASecret.user_id == user.id,
+            TwoFASecret.status == TwoFAStatus.ENABLED
+        )
+    )
+    two_fa_record = result.scalar_one_or_none()
+    
+    # If 2FA is enabled, require code
+    if two_fa_record:
+        two_fa_code = getattr(request, 'two_fa_code', None)
+        
+        if not two_fa_code:
+            login_attempt.failure_reason = "2fa_required"
+            db.add(login_attempt)
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Código 2FA necessário",
+                headers={"X-Require-2FA": "true"}
+            )
+        
+        # Verify 2FA code
+        code_valid = await two_fa_service.verify_2fa_for_login(
+            db, user.id, two_fa_code
+        )
+        
+        if not code_valid:
+            login_attempt.failure_reason = "invalid_2fa_code"
+            db.add(login_attempt)
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Código 2FA inválido"
+            )
+    
+    # Check if 2FA is required for role but not enabled
+    role_requires_2fa = user.role in ["admin", "doctor", "superadmin"]
+    
     # Update last login
     user.last_login = datetime.utcnow()
+    
+    # Log successful login
+    login_attempt.success = True
+    if role_requires_2fa and not two_fa_record:
+        login_attempt.failure_reason = "2fa_setup_required"
+    db.add(login_attempt)
     await db.commit()
     
     # Create tokens
@@ -256,7 +326,8 @@ async def login(
         "sub": str(user.id),
         "email": user.email,
         "role": user.role,
-        "clinic_id": str(user.clinic_id)
+        "clinic_id": str(user.clinic_id),
+        "two_fa_verified": two_fa_record is not None
     }
     
     access_token = security.create_access_token(token_data)

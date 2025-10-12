@@ -49,6 +49,7 @@ class LoginRequest(BaseSchema):
     """Login request schema."""
     email: EmailStr
     password: str
+    two_fa_code: Optional[str] = Field(None, min_length=6, max_length=8, description="6-digit 2FA code or 8-character backup code")
 
 
 class TokenResponse(BaseSchema):
