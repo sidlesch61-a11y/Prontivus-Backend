@@ -280,7 +280,7 @@ async def update_appointment(
     appointment_id: str,
     update_data: AppointmentUpdate,
     current_user = Depends(require_appointments_write),
-    db: AsyncSession = Depends(get_db_transaction)
+    db: AsyncSession = Depends(get_db_session)  # Changed from get_db_transaction
 ):
     """Update appointment."""
     try:
@@ -307,8 +307,16 @@ async def update_appointment(
         # Always update the updated_at timestamp
         appointment.updated_at = datetime.now()
         
-        await db.commit()
-        await db.refresh(appointment)
+        # Get related data for response BEFORE commit
+        patient_result = await db.execute(
+            select(Patient.name).where(Patient.id == appointment.patient_id)
+        )
+        patient_name = patient_result.scalar()
+        
+        doctor_result = await db.execute(
+            select(User.name).where(User.id == appointment.doctor_id)
+        )
+        doctor_name = doctor_result.scalar()
         
         # Create audit log
         audit_log = AuditLog(
@@ -320,19 +328,12 @@ async def update_appointment(
             details={"updated_fields": list(update_dict.keys())}
         )
         db.add(audit_log)
+        
+        # Commit all changes at once
         await db.commit()
+        await db.refresh(appointment)
         
-        # Get related data for response
-        patient_result = await db.execute(
-            select(Patient.name).where(Patient.id == appointment.patient_id)
-        )
-        patient_name = patient_result.scalar()
-        
-        doctor_result = await db.execute(
-            select(User.name).where(User.id == appointment.doctor_id)
-        )
-        doctor_name = doctor_result.scalar()
-        
+        # Build response
         appointment_response = AppointmentResponse.from_orm(appointment)
         appointment_response.patient_name = patient_name
         appointment_response.doctor_name = doctor_name
@@ -343,6 +344,8 @@ async def update_appointment(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
+        # Rollback on error
+        await db.rollback()
         # Log the error and return a more informative message
         import logging
         logger = logging.getLogger(__name__)
