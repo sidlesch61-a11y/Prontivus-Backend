@@ -283,57 +283,74 @@ async def update_appointment(
     db: AsyncSession = Depends(get_db_transaction)
 ):
     """Update appointment."""
-    # Get appointment
-    result = await db.execute(
-        select(Appointment).where(
-            Appointment.id == appointment_id,
-            Appointment.clinic_id == current_user.clinic_id
+    try:
+        # Get appointment
+        result = await db.execute(
+            select(Appointment).where(
+                Appointment.id == appointment_id,
+                Appointment.clinic_id == current_user.clinic_id
+            )
         )
-    )
-    appointment = result.scalar_one_or_none()
+        appointment = result.scalar_one_or_none()
+        
+        if not appointment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Appointment not found"
+            )
+        
+        # Update fields
+        update_dict = update_data.dict(exclude_unset=True)
+        for field, value in update_dict.items():
+            setattr(appointment, field, value)
+        
+        # Always update the updated_at timestamp
+        appointment.updated_at = datetime.now()
+        
+        await db.commit()
+        await db.refresh(appointment)
+        
+        # Create audit log
+        audit_log = AuditLog(
+            clinic_id=current_user.clinic_id,
+            user_id=current_user.id,
+            action="appointment_updated",
+            entity="appointment",
+            entity_id=appointment.id,
+            details={"updated_fields": list(update_dict.keys())}
+        )
+        db.add(audit_log)
+        await db.commit()
+        
+        # Get related data for response
+        patient_result = await db.execute(
+            select(Patient.name).where(Patient.id == appointment.patient_id)
+        )
+        patient_name = patient_result.scalar()
+        
+        doctor_result = await db.execute(
+            select(User.name).where(User.id == appointment.doctor_id)
+        )
+        doctor_name = doctor_result.scalar()
+        
+        appointment_response = AppointmentResponse.from_orm(appointment)
+        appointment_response.patient_name = patient_name
+        appointment_response.doctor_name = doctor_name
+        
+        return appointment_response
     
-    if not appointment:
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log the error and return a more informative message
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error updating appointment {appointment_id}: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appointment not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update appointment: {str(e)}"
         )
-    
-    # Update fields
-    update_dict = update_data.dict(exclude_unset=True)
-    for field, value in update_dict.items():
-        setattr(appointment, field, value)
-    
-    await db.commit()
-    await db.refresh(appointment)
-    
-    # Create audit log
-    audit_log = AuditLog(
-        clinic_id=current_user.clinic_id,
-        user_id=current_user.id,
-        action="appointment_updated",
-        entity="appointment",
-        entity_id=appointment.id,
-        details={"updated_fields": list(update_dict.keys())}
-    )
-    db.add(audit_log)
-    await db.commit()
-    
-    # Get related data for response
-    patient_result = await db.execute(
-        select(Patient.name).where(Patient.id == appointment.patient_id)
-    )
-    patient_name = patient_result.scalar()
-    
-    doctor_result = await db.execute(
-        select(User.name).where(User.id == appointment.doctor_id)
-    )
-    doctor_name = doctor_result.scalar()
-    
-    appointment_response = AppointmentResponse.from_orm(appointment)
-    appointment_response.patient_name = patient_name
-    appointment_response.doctor_name = doctor_name
-    
-    return appointment_response
 
 
 @router.delete("/{appointment_id}")
