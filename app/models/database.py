@@ -133,6 +133,41 @@ class Appointment(AppointmentBase, table=True):
     # files: List["File"] = Relationship(back_populates="appointment")  # Commented out - column doesn't exist in DB
 
 
+class ConsultationBase(SQLModel):
+    """Base consultation model for medical consultations (Atendimento Médico)."""
+    chief_complaint: str
+    history_present_illness: Optional[str] = None
+    past_medical_history: Optional[str] = None
+    family_history: Optional[str] = None
+    social_history: Optional[str] = None
+    medications_in_use: Optional[str] = None
+    allergies: Optional[str] = None
+    physical_examination: Optional[str] = None
+    vital_signs: Optional[Dict[str, Any]] = Field(default_factory=lambda: {}, sa_column=Column(JSON))
+    diagnosis: str
+    diagnosis_code: Optional[str] = None
+    treatment_plan: Optional[str] = None
+    follow_up: Optional[str] = None
+    notes: Optional[str] = None
+    is_locked: bool = Field(default=False)
+    locked_at: Optional[datetime] = None
+
+
+class Consultation(ConsultationBase, table=True):
+    """Consultation model for complete medical consultations."""
+    __tablename__ = "consultations"
+    __table_args__ = {'extend_existing': True}
+    
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    clinic_id: uuid.UUID = Field(foreign_key="clinics.id")
+    patient_id: uuid.UUID = Field(foreign_key="patients.id")
+    appointment_id: uuid.UUID = Field(foreign_key="appointments.id")
+    doctor_id: uuid.UUID = Field(foreign_key="users.id")
+    locked_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
 class MedicalRecordBase(SQLModel):
     """Base medical record model."""
     anamnesis: Optional[str] = None

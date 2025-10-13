@@ -13,7 +13,7 @@ import structlog
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix, two_fa, payments  # Complete payment integration
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix, two_fa, payments, consultations  # Complete consultation workflow
 
 
 # Configure logging
@@ -204,6 +204,7 @@ app.include_router(medical_records.router, prefix="/api/v1/medical_records", tag
 app.include_router(files.router, prefix="/api/v1/files", tags=["Files"])
 app.include_router(invoices.router, prefix="/api/v1/invoices", tags=["Invoices"])
 app.include_router(payments.router, prefix="/api/v1", tags=["Payments"])  # NEW: Complete payment integration (PIX, Boleto, PayPal)
+app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])  # NEW: Complete consultation workflow
 app.include_router(licenses.router, prefix="/api/v1/licenses", tags=["Licenses"])
 app.include_router(sync.router, prefix="/api/v1/sync", tags=["Sync"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
