@@ -689,3 +689,267 @@ async def generate_tiss(
             detail=f"Failed to generate TISS: {str(e)}"
         )
 
+
+# Queue Management Endpoints
+
+class QueuePatient(BaseModel):
+    """Patient in waiting queue."""
+    id: str
+    patient_id: str
+    patient_name: str
+    patient_cpf: Optional[str]
+    patient_age: Optional[int]
+    patient_gender: str
+    appointment_id: str
+    appointment_time: str
+    doctor_name: str
+    status: str  # waiting, in_progress, completed
+    position: int
+    called_at: Optional[str]
+
+
+@router.get("/queue", response_model=List[QueuePatient])
+async def get_queue(
+    status: Optional[str] = Query(None, description="Filter by status: waiting, in_progress, completed"),
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get patient queue for the current doctor.
+    
+    Returns patients waiting, in progress, or completed consultations.
+    Ordered by appointment time.
+    """
+    try:
+        from app.models.database import Appointment, Patient, User
+        from datetime import datetime, timedelta
+        
+        # Get today's date range
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        
+        # Build query for today's appointments
+        query = select(Appointment, Patient, User).join(
+            Patient, Appointment.patient_id == Patient.id
+        ).join(
+            User, Appointment.doctor_id == User.id
+        ).where(
+            and_(
+                Appointment.clinic_id == current_user.clinic_id,
+                Appointment.start_time >= today_start,
+                Appointment.start_time < today_end
+            )
+        )
+        
+        # Filter by status if provided
+        if status:
+            if status == "waiting":
+                query = query.where(Appointment.status.in_(["scheduled", "confirmed"]))
+            elif status == "in_progress":
+                query = query.where(Appointment.status == "in_progress")
+            elif status == "completed":
+                query = query.where(Appointment.status == "completed")
+        
+        # Order by appointment time
+        query = query.order_by(Appointment.start_time)
+        
+        result = await db.execute(query)
+        rows = result.all()
+        
+        # Build queue response
+        queue_patients = []
+        position = 1
+        
+        for appointment, patient, doctor in rows:
+            # Calculate age
+            age = None
+            if patient.birthdate:
+                from datetime import date
+                today = date.today()
+                age = today.year - patient.birthdate.year - ((today.month, today.day) < (patient.birthdate.month, patient.birthdate.day))
+            
+            # Determine status
+            if appointment.status == "in_progress":
+                status_str = "in_progress"
+            elif appointment.status == "completed":
+                status_str = "completed"
+            else:
+                status_str = "waiting"
+            
+            queue_patients.append(QueuePatient(
+                id=str(appointment.id),
+                patient_id=str(patient.id),
+                patient_name=patient.name,
+                patient_cpf=patient.cpf,
+                patient_age=age,
+                patient_gender=patient.gender,
+                appointment_id=str(appointment.id),
+                appointment_time=appointment.start_time.isoformat(),
+                doctor_name=doctor.name,
+                status=status_str,
+                position=position,
+                called_at=appointment.updated_at.isoformat() if appointment.status == "in_progress" else None
+            ))
+            position += 1
+        
+        return queue_patients
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching queue: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao buscar fila de espera: {str(e)}"
+        )
+
+
+@router.post("/queue/call/{appointment_id}")
+async def call_patient(
+    appointment_id: str,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Call a patient from the waiting queue.
+    
+    Changes appointment status to 'in_progress' and opens consultation area.
+    """
+    try:
+        from app.models.database import Appointment
+        
+        # Get appointment
+        result = await db.execute(
+            select(Appointment).where(
+                Appointment.id == appointment_id,
+                Appointment.clinic_id == current_user.clinic_id
+            )
+        )
+        appointment = result.scalar_one_or_none()
+        
+        if not appointment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Consulta não encontrada"
+            )
+        
+        # Update status to in_progress
+        appointment.status = "in_progress"
+        appointment.updated_at = datetime.now()
+        
+        await db.commit()
+        await db.refresh(appointment)
+        
+        # Create audit log
+        audit_log = AuditLog(
+            clinic_id=current_user.clinic_id,
+            user_id=current_user.id,
+            action="patient_called",
+            entity="appointment",
+            entity_id=appointment.id,
+            details={"patient_id": str(appointment.patient_id)}
+        )
+        db.add(audit_log)
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "Paciente chamado com sucesso",
+            "appointment_id": str(appointment.id),
+            "patient_id": str(appointment.patient_id),
+            "status": appointment.status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error calling patient: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao chamar paciente: {str(e)}"
+        )
+
+
+@router.post("/{consultation_id}/finalize")
+async def finalize_consultation(
+    consultation_id: str,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Finalize a consultation.
+    
+    Locks the consultation, marks appointment as completed,
+    and returns to queue view.
+    """
+    try:
+        from app.models.database import Consultation, Appointment
+        
+        # Get consultation
+        result = await db.execute(
+            select(Consultation).where(
+                Consultation.id == consultation_id,
+                Consultation.clinic_id == current_user.clinic_id
+            )
+        )
+        consultation = result.scalar_one_or_none()
+        
+        if not consultation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Consulta não encontrada"
+            )
+        
+        # Lock consultation
+        consultation.is_locked = True
+        consultation.locked_at = datetime.now()
+        consultation.locked_by = current_user.id
+        consultation.updated_at = datetime.now()
+        
+        # Update appointment status
+        appointment_result = await db.execute(
+            select(Appointment).where(Appointment.id == consultation.appointment_id)
+        )
+        appointment = appointment_result.scalar_one_or_none()
+        
+        if appointment:
+            appointment.status = "completed"
+            appointment.updated_at = datetime.now()
+        
+        await db.commit()
+        
+        # Create audit log
+        audit_log = AuditLog(
+            clinic_id=current_user.clinic_id,
+            user_id=current_user.id,
+            action="consultation_finalized",
+            entity="consultation",
+            entity_id=consultation.id,
+            details={"patient_id": str(consultation.patient_id)}
+        )
+        db.add(audit_log)
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "Consulta finalizada com sucesso",
+            "consultation_id": str(consultation.id),
+            "is_locked": consultation.is_locked,
+            "locked_at": consultation.locked_at.isoformat() if consultation.locked_at else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error finalizing consultation: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao finalizar consulta: {str(e)}"
+        )
+

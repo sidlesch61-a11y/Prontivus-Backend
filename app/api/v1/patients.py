@@ -72,44 +72,101 @@ async def create_patient(
     current_user = Depends(require_patients_write),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """Create a new patient."""
-    # Check if CPF already exists in clinic
-    result = await db.execute(
-        select(Patient).where(
-            Patient.clinic_id == current_user.clinic_id,
-            Patient.cpf == patient_data.cpf
-        )
-    )
-    existing_patient = result.scalar_one_or_none()
+    """
+    Create a new patient.
     
-    if existing_patient:
+    Validates required fields and prevents duplicate CPF registrations.
+    Returns detailed error messages in Portuguese.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Creating patient: {patient_data.name}, CPF: {patient_data.cpf}")
+        
+        # Validate required fields
+        if not patient_data.name or len(patient_data.name) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nome do paciente é obrigatório (mínimo 2 caracteres)"
+            )
+        
+        if not patient_data.birthdate:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Data de nascimento é obrigatória"
+            )
+        
+        if not patient_data.gender:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Gênero é obrigatório"
+            )
+        
+        if not patient_data.cpf:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CPF é obrigatório"
+            )
+        
+        # Check if CPF already exists in clinic
+        result = await db.execute(
+            select(Patient).where(
+                Patient.clinic_id == current_user.clinic_id,
+                Patient.cpf == patient_data.cpf
+            )
+        )
+        existing_patient = result.scalar_one_or_none()
+        
+        if existing_patient:
+            logger.warning(f"CPF already exists: {patient_data.cpf}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Já existe um paciente cadastrado com este CPF nesta clínica"
+            )
+        
+        # Create patient with address handling
+        patient_dict = patient_data.dict()
+        
+        # Ensure address is a dict (not None)
+        if patient_dict.get('address') is None:
+            patient_dict['address'] = {}
+        
+        patient = Patient(
+            clinic_id=current_user.clinic_id,
+            **patient_dict
+        )
+        db.add(patient)
+        await db.commit()
+        await db.refresh(patient)
+        
+        logger.info(f"Patient created successfully: {patient.id}")
+        
+        # Create audit log
+        audit_log = AuditLog(
+            clinic_id=current_user.clinic_id,
+            user_id=current_user.id,
+            action="patient_created",
+            entity="patient",
+            entity_id=patient.id,
+            details={"patient_name": patient.name, "cpf": patient.cpf}
+        )
+        db.add(audit_log)
+        await db.commit()
+        
+        return PatientResponse.from_orm(patient)
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log and return detailed error
+        logger.error(f"Error creating patient: {str(e)}", exc_info=True)
+        await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Patient with this CPF already exists"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao criar paciente: {str(e)}"
         )
-    
-    # Create patient
-    patient = Patient(
-        clinic_id=current_user.clinic_id,
-        **patient_data.dict()
-    )
-    db.add(patient)
-    await db.commit()
-    await db.refresh(patient)
-    
-    # Create audit log
-    audit_log = AuditLog(
-        clinic_id=current_user.clinic_id,
-        user_id=current_user.id,
-        action="patient_created",
-        entity="patient",
-        entity_id=patient.id,
-        details={"patient_name": patient.name, "cpf": patient.cpf}
-    )
-    db.add(audit_log)
-    await db.commit()
-    
-    return PatientResponse.from_orm(patient)
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)
