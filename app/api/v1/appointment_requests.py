@@ -590,7 +590,7 @@ async def cancel_appointment_request(
 
 @router.get("/stats")
 async def get_appointment_request_stats(
-    current_user = Depends(AuthDependencies.get_current_user()),
+    current_user = Depends(AuthDependencies.get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Get statistics for appointment requests."""
