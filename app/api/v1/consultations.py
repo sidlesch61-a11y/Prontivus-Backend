@@ -13,6 +13,7 @@ import uuid
 from app.core.auth import get_current_user
 from app.db.session import get_db_session
 from app.models import AuditLog
+from app.core.config import settings
 
 router = APIRouter()
 
