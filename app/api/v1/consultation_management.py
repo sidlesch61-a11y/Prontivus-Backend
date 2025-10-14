@@ -259,14 +259,14 @@ async def call_patient(
 ):
     """Call a patient from the queue."""
     try:
-        # Find queue entry
+        # Find queue entry - get the first waiting entry for this patient
         stmt = select(QueueStatus).where(
             and_(
                 QueueStatus.patient_id == patient_id,
                 QueueStatus.doctor_id == current_user.id,
                 QueueStatus.status == "waiting"
             )
-        )
+        ).order_by(QueueStatus.priority.desc(), QueueStatus.created_at.asc()).limit(1)
         result = await db.execute(stmt)
         queue_entry = result.scalar_one_or_none()
         
