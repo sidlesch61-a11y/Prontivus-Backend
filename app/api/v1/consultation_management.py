@@ -198,13 +198,52 @@ async def get_queue(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """Get patient queue for current doctor."""
+    """
+    Get patient queue for current doctor.
+    Automatically creates queue entries for today's appointments if they don't exist.
+    """
     try:
-        # Get today's queue
+        # Get today's date range
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
         
-        # Build query
+        # FIRST: Auto-sync appointments to queue
+        # Get today's appointments for this doctor that don't have queue entries
+        appointments_without_queue = await db.execute(
+            select(Appointment, Patient).join(
+                Patient, Appointment.patient_id == Patient.id
+            ).where(
+                and_(
+                    Appointment.doctor_id == current_user.id,
+                    Appointment.start_time >= today_start,
+                    Appointment.start_time < today_end,
+                    Appointment.status.in_(['scheduled', 'confirmed', 'checked_in', 'in_progress'])
+                )
+            )
+        )
+        appointments_rows = appointments_without_queue.all()
+        
+        # Create queue entries for appointments without them
+        for appointment, patient in appointments_rows:
+            # Check if queue entry exists
+            existing_queue = await db.execute(
+                select(QueueStatus).where(QueueStatus.appointment_id == appointment.id)
+            )
+            if not existing_queue.scalar_one_or_none():
+                # Create queue entry
+                queue_entry = QueueStatus(
+                    appointment_id=appointment.id,
+                    patient_id=appointment.patient_id,
+                    doctor_id=appointment.doctor_id,
+                    clinic_id=appointment.clinic_id,
+                    status="waiting",
+                    priority=0
+                )
+                db.add(queue_entry)
+        
+        await db.commit()
+        
+        # NOW: Get the queue
         stmt = select(QueueStatus, Patient, Appointment).join(
             Patient, QueueStatus.patient_id == Patient.id
         ).join(
@@ -248,6 +287,7 @@ async def get_queue(
         return queue_list
         
     except Exception as e:
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error fetching queue: {str(e)}")
 
 

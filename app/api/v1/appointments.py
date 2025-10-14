@@ -190,6 +190,22 @@ async def create_appointment(
         db.add(appointment)
         await db.flush()  # Get appointment ID
         
+        # Auto-create queue entry for today's appointments
+        # This ensures the appointment appears in /app/atendimento
+        from app.models.consultation_extended import QueueStatus
+        from datetime import date as date_type
+        
+        if appointment.start_time.date() == date_type.today():
+            queue_entry = QueueStatus(
+                appointment_id=appointment.id,
+                patient_id=appointment.patient_id,
+                doctor_id=appointment.doctor_id,
+                clinic_id=current_user.clinic_id,
+                status="waiting",
+                priority=0
+            )
+            db.add(queue_entry)
+        
         # Create audit log
         audit_log = AuditLog(
             clinic_id=current_user.clinic_id,
