@@ -587,3 +587,110 @@ async def cancel_appointment_request(
             detail=f"Falha ao cancelar solicitação: {str(e)}"
         )
 
+
+@router.get("/stats")
+async def get_appointment_request_stats(
+    current_user = Depends(AuthDependencies.get_current_user()),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get statistics for appointment requests."""
+    try:
+        from sqlalchemy import func, cast, String
+        from datetime import date
+        
+        clinic_id = current_user.clinic_id
+        today = date.today()
+        
+        # Total requests
+        total_requests = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(AppointmentRequest.clinic_id == clinic_id)
+        ) or 0
+        
+        # Pending requests
+        pending_requests = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(
+                and_(
+                    AppointmentRequest.clinic_id == clinic_id,
+                    cast(AppointmentRequest.status, String) == "pending"
+                )
+            )
+        ) or 0
+        
+        # Approved requests
+        approved_requests = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(
+                and_(
+                    AppointmentRequest.clinic_id == clinic_id,
+                    cast(AppointmentRequest.status, String) == "approved"
+                )
+            )
+        ) or 0
+        
+        # Rejected requests
+        rejected_requests = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(
+                and_(
+                    AppointmentRequest.clinic_id == clinic_id,
+                    cast(AppointmentRequest.status, String) == "rejected"
+                )
+            )
+        ) or 0
+        
+        # Requests today
+        requests_today = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(
+                and_(
+                    AppointmentRequest.clinic_id == clinic_id,
+                    func.date(AppointmentRequest.requested_at) == today
+                )
+            )
+        ) or 0
+        
+        # Pending from today
+        pending_today = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(
+                and_(
+                    AppointmentRequest.clinic_id == clinic_id,
+                    cast(AppointmentRequest.status, String) == "pending",
+                    func.date(AppointmentRequest.requested_at) == today
+                )
+            )
+        ) or 0
+        
+        # Approved this week
+        week_start = today - timedelta(days=today.weekday())
+        approved_this_week = await db.scalar(
+            select(func.count(AppointmentRequest.id))
+            .where(
+                and_(
+                    AppointmentRequest.clinic_id == clinic_id,
+                    cast(AppointmentRequest.status, String) == "approved",
+                    func.date(AppointmentRequest.reviewed_at) >= week_start
+                )
+            )
+        ) or 0
+        
+        return {
+            "total_requests": total_requests,
+            "pending_requests": pending_requests,
+            "approved_requests": approved_requests,
+            "rejected_requests": rejected_requests,
+            "requests_today": requests_today,
+            "pending_today": pending_today,
+            "approved_this_week": approved_this_week
+        }
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting appointment request stats: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Falha ao buscar estatísticas: {str(e)}"
+        )
