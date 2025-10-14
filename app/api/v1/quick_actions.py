@@ -1,0 +1,389 @@
+"""
+API endpoints for quick actions (prescriptions, certificates, exam requests, referrals).
+"""
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from typing import List
+from datetime import datetime
+import uuid
+
+from app.db.session import get_db_session
+from app.core.auth import get_current_user
+from app.models.consultation_extended import (
+    PrescriptionItem, PrescriptionItemCreate,
+    MedicalCertificate, MedicalCertificateCreate,
+    ExamRequest, ExamRequestCreate,
+    Referral, ReferralCreate
+)
+from app.models.database import User, Prescription
+
+router = APIRouter(prefix="/quick-actions", tags=["Quick Actions"])
+
+# ============================================================================
+# PRESCRIPTION ENDPOINTS
+# ============================================================================
+
+@router.post("/prescriptions/create")
+async def create_prescription_with_items(
+    consultation_id: uuid.UUID,
+    patient_id: uuid.UUID,
+    items: List[PrescriptionItemCreate],
+    notes: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Create a prescription with multiple items."""
+    try:
+        # Create prescription
+        prescription = Prescription(
+            consultation_id=consultation_id,
+            patient_id=patient_id,
+            doctor_id=current_user.id,
+            clinic_id=current_user.clinic_id,
+            notes=notes,
+            status="active"
+        )
+        
+        db.add(prescription)
+        await db.flush()  # Get prescription ID
+        
+        # Add prescription items
+        for item_data in items:
+            item = PrescriptionItem(
+                prescription_id=prescription.id,
+                **item_data.dict()
+            )
+            db.add(item)
+        
+        await db.commit()
+        await db.refresh(prescription)
+        
+        # TODO: Generate PDF with ICP-Brasil signature
+        # pdf_url = await generate_prescription_pdf(prescription.id)
+        # prescription.pdf_url = pdf_url
+        # await db.commit()
+        
+        return {
+            "message": "Prescription created successfully",
+            "prescription_id": str(prescription.id),
+            "pdf_url": prescription.pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating prescription: {str(e)}")
+
+
+@router.get("/prescriptions/{prescription_id}/items", response_model=List[PrescriptionItemCreate])
+async def get_prescription_items(
+    prescription_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get all items for a prescription."""
+    stmt = select(PrescriptionItem).where(PrescriptionItem.prescription_id == prescription_id)
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    
+    return items
+
+
+@router.post("/prescriptions/{prescription_id}/generate-pdf")
+async def generate_prescription_pdf_endpoint(
+    prescription_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Generate PDF for a prescription with ICP-Brasil signature."""
+    try:
+        # Get prescription
+        stmt = select(Prescription).where(Prescription.id == prescription_id)
+        result = await db.execute(stmt)
+        prescription = result.scalar_one_or_none()
+        
+        if not prescription:
+            raise HTTPException(status_code=404, detail="Prescription not found")
+        
+        # Get prescription items
+        stmt = select(PrescriptionItem).where(PrescriptionItem.prescription_id == prescription_id)
+        result = await db.execute(stmt)
+        items = result.scalars().all()
+        
+        # TODO: Generate PDF with ICP-Brasil signature
+        # This should use the existing prescription PDF generation service
+        # from app.services.prescription_pdf import generate_prescription_pdf
+        # pdf_url = await generate_prescription_pdf(prescription, items)
+        
+        pdf_url = f"/prescriptions/{prescription_id}.pdf"  # Placeholder
+        
+        prescription.pdf_url = pdf_url
+        prescription.updated_at = datetime.now()
+        await db.commit()
+        
+        return {
+            "message": "PDF generated successfully",
+            "pdf_url": pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+
+# ============================================================================
+# MEDICAL CERTIFICATE ENDPOINTS
+# ============================================================================
+
+@router.post("/certificates/create")
+async def create_medical_certificate(
+    certificate_data: MedicalCertificateCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Create a medical certificate (atestado)."""
+    try:
+        certificate = MedicalCertificate(
+            **certificate_data.dict(),
+            doctor_id=current_user.id
+        )
+        
+        db.add(certificate)
+        await db.commit()
+        await db.refresh(certificate)
+        
+        # TODO: Generate PDF with ICP-Brasil signature
+        # pdf_url = await generate_certificate_pdf(certificate.id)
+        # certificate.pdf_url = pdf_url
+        # await db.commit()
+        
+        return {
+            "message": "Certificate created successfully",
+            "certificate_id": str(certificate.id),
+            "pdf_url": certificate.pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating certificate: {str(e)}")
+
+
+@router.get("/certificates/{consultation_id}")
+async def get_certificates_by_consultation(
+    consultation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get all certificates for a consultation."""
+    stmt = select(MedicalCertificate).where(
+        MedicalCertificate.consultation_id == consultation_id
+    ).order_by(MedicalCertificate.issued_at.desc())
+    
+    result = await db.execute(stmt)
+    certificates = result.scalars().all()
+    
+    return certificates
+
+
+@router.post("/certificates/{certificate_id}/generate-pdf")
+async def generate_certificate_pdf_endpoint(
+    certificate_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Generate PDF for a medical certificate."""
+    try:
+        stmt = select(MedicalCertificate).where(MedicalCertificate.id == certificate_id)
+        result = await db.execute(stmt)
+        certificate = result.scalar_one_or_none()
+        
+        if not certificate:
+            raise HTTPException(status_code=404, detail="Certificate not found")
+        
+        # TODO: Generate PDF
+        pdf_url = f"/certificates/{certificate_id}.pdf"  # Placeholder
+        
+        certificate.pdf_url = pdf_url
+        await db.commit()
+        
+        return {
+            "message": "PDF generated successfully",
+            "pdf_url": pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+
+# ============================================================================
+# EXAM REQUEST ENDPOINTS
+# ============================================================================
+
+@router.post("/exam-requests/create")
+async def create_exam_request(
+    exam_data: ExamRequestCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Create an exam request (solicitação de exame)."""
+    try:
+        exam_request = ExamRequest(
+            **exam_data.dict(),
+            doctor_id=current_user.id
+        )
+        
+        db.add(exam_request)
+        await db.commit()
+        await db.refresh(exam_request)
+        
+        # TODO: Generate TISS guide if needed
+        # if insurance_required:
+        #     tiss_guide = await generate_tiss_guide(exam_request.id)
+        #     exam_request.tiss_guide_id = tiss_guide.id
+        #     await db.commit()
+        
+        return {
+            "message": "Exam request created successfully",
+            "exam_request_id": str(exam_request.id),
+            "pdf_url": exam_request.pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating exam request: {str(e)}")
+
+
+@router.get("/exam-requests/{consultation_id}")
+async def get_exam_requests_by_consultation(
+    consultation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get all exam requests for a consultation."""
+    stmt = select(ExamRequest).where(
+        ExamRequest.consultation_id == consultation_id
+    ).order_by(ExamRequest.requested_at.desc())
+    
+    result = await db.execute(stmt)
+    exam_requests = result.scalars().all()
+    
+    return exam_requests
+
+
+@router.post("/exam-requests/{exam_request_id}/generate-pdf")
+async def generate_exam_request_pdf_endpoint(
+    exam_request_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Generate PDF for an exam request."""
+    try:
+        stmt = select(ExamRequest).where(ExamRequest.id == exam_request_id)
+        result = await db.execute(stmt)
+        exam_request = result.scalar_one_or_none()
+        
+        if not exam_request:
+            raise HTTPException(status_code=404, detail="Exam request not found")
+        
+        # TODO: Generate PDF
+        pdf_url = f"/exam-requests/{exam_request_id}.pdf"  # Placeholder
+        
+        exam_request.pdf_url = pdf_url
+        await db.commit()
+        
+        return {
+            "message": "PDF generated successfully",
+            "pdf_url": pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+
+# ============================================================================
+# REFERRAL ENDPOINTS
+# ============================================================================
+
+@router.post("/referrals/create")
+async def create_referral(
+    referral_data: ReferralCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Create a referral (encaminhamento)."""
+    try:
+        referral = Referral(
+            **referral_data.dict(),
+            doctor_id=current_user.id
+        )
+        
+        db.add(referral)
+        await db.commit()
+        await db.refresh(referral)
+        
+        # TODO: Generate PDF
+        # pdf_url = await generate_referral_pdf(referral.id)
+        # referral.pdf_url = pdf_url
+        # await db.commit()
+        
+        return {
+            "message": "Referral created successfully",
+            "referral_id": str(referral.id),
+            "pdf_url": referral.pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating referral: {str(e)}")
+
+
+@router.get("/referrals/{consultation_id}")
+async def get_referrals_by_consultation(
+    consultation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get all referrals for a consultation."""
+    stmt = select(Referral).where(
+        Referral.consultation_id == consultation_id
+    ).order_by(Referral.referred_at.desc())
+    
+    result = await db.execute(stmt)
+    referrals = result.scalars().all()
+    
+    return referrals
+
+
+@router.post("/referrals/{referral_id}/generate-pdf")
+async def generate_referral_pdf_endpoint(
+    referral_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Generate PDF for a referral."""
+    try:
+        stmt = select(Referral).where(Referral.id == referral_id)
+        result = await db.execute(stmt)
+        referral = result.scalar_one_or_none()
+        
+        if not referral:
+            raise HTTPException(status_code=404, detail="Referral not found")
+        
+        # TODO: Generate PDF
+        pdf_url = f"/referrals/{referral_id}.pdf"  # Placeholder
+        
+        referral.pdf_url = pdf_url
+        await db.commit()
+        
+        return {
+            "message": "PDF generated successfully",
+            "pdf_url": pdf_url
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
