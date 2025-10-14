@@ -715,3 +715,121 @@ async def resolve_tiss_ethical_lock(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to resolve ethical lock"
         )
+
+
+@router.get("/stats")
+async def get_tiss_stats(
+    current_user = Depends(AuthDependencies.get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get TISS statistics for the current clinic."""
+    try:
+        from sqlalchemy import func, cast, String
+        from datetime import date
+        
+        clinic_id = current_user.clinic_id
+        today = date.today()
+        
+        # Total providers
+        total_providers = await db.scalar(
+            select(func.count(TISSProvider.id))
+            .where(TISSProvider.clinic_id == clinic_id)
+        ) or 0
+        
+        # Active providers
+        active_providers = await db.scalar(
+            select(func.count(TISSProvider.id))
+            .where(
+                and_(
+                    TISSProvider.clinic_id == clinic_id,
+                    cast(TISSProvider.status, String) == "active"
+                )
+            )
+        ) or 0
+        
+        # Total jobs
+        total_jobs = await db.scalar(
+            select(func.count(TISSJob.id))
+            .where(TISSJob.clinic_id == clinic_id)
+        ) or 0
+        
+        # Jobs today
+        jobs_today = await db.scalar(
+            select(func.count(TISSJob.id))
+            .where(
+                and_(
+                    TISSJob.clinic_id == clinic_id,
+                    func.date(TISSJob.created_at) == today
+                )
+            )
+        ) or 0
+        
+        # Pending jobs
+        pending_jobs = await db.scalar(
+            select(func.count(TISSJob.id))
+            .where(
+                and_(
+                    TISSJob.clinic_id == clinic_id,
+                    cast(TISSJob.status, String).in_(["pending", "processing"])
+                )
+            )
+        ) or 0
+        
+        # Completed jobs
+        completed_jobs = await db.scalar(
+            select(func.count(TISSJob.id))
+            .where(
+                and_(
+                    TISSJob.clinic_id == clinic_id,
+                    cast(TISSJob.status, String) == "completed"
+                )
+            )
+        ) or 0
+        
+        # Failed jobs
+        failed_jobs = await db.scalar(
+            select(func.count(TISSJob.id))
+            .where(
+                and_(
+                    TISSJob.clinic_id == clinic_id,
+                    cast(TISSJob.status, String) == "failed"
+                )
+            )
+        ) or 0
+        
+        # Jobs this week
+        week_start = today - timedelta(days=today.weekday())
+        jobs_this_week = await db.scalar(
+            select(func.count(TISSJob.id))
+            .where(
+                and_(
+                    TISSJob.clinic_id == clinic_id,
+                    func.date(TISSJob.created_at) >= week_start
+                )
+            )
+        ) or 0
+        
+        # Success rate
+        if total_jobs > 0:
+            success_rate = round((completed_jobs / total_jobs) * 100, 1)
+        else:
+            success_rate = 0.0
+        
+        return {
+            "total_providers": total_providers,
+            "active_providers": active_providers,
+            "total_jobs": total_jobs,
+            "jobs_today": jobs_today,
+            "pending_jobs": pending_jobs,
+            "completed_jobs": completed_jobs,
+            "failed_jobs": failed_jobs,
+            "jobs_this_week": jobs_this_week,
+            "success_rate": success_rate
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting TISS stats: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get TISS statistics: {str(e)}"
+        )
