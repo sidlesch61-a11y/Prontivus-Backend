@@ -751,7 +751,7 @@ async def generate_prescription(
         }
         
         # Generate verification URL (for QR code)
-        verification_url = f"{settings.api_url}/prescription/verify/{consultation_id}"
+        verification_url = f"{settings.api_url}/api/v1/prescription/verify/{consultation_id}"
         
         # Generate PDF
         generator = PrescriptionPDFGenerator()

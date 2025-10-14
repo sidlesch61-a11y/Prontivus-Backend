@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     app_version: str = Field(default="1.0.0", env="APP_VERSION")
     app_env: str = Field(default="development", env="APP_ENV")
     debug: bool = Field(default=False, env="DEBUG")
+    api_url: str = Field(default="https://prontivus-backend-wnw2.onrender.com", env="API_URL")
     
     # Security
     secret_key: str = Field(default="dev-secret-key-change-in-production")
