@@ -53,6 +53,30 @@ async def get_dashboard_stats(
         .where(MedicalRecord.clinic_id == clinic_id)
     ) or 0
     
+    # This week's records
+    week_start = today - timedelta(days=today.weekday())
+    records_this_week = await db.scalar(
+        select(func.count(MedicalRecord.id))
+        .where(MedicalRecord.clinic_id == clinic_id)
+        .where(func.date(MedicalRecord.created_at) >= week_start)
+    ) or 0
+    
+    # Total staff/users count
+    from app.models.database import User
+    staff_count = await db.scalar(
+        select(func.count(User.id))
+        .where(User.clinic_id == clinic_id)
+        .where(User.is_active == True)
+    ) or 0
+    
+    # Pending appointments count
+    pending_appointments = await db.scalar(
+        select(func.count(Appointment.id))
+        .where(Appointment.clinic_id == clinic_id)
+        .where(cast(Appointment.status, String).in_(["scheduled", "confirmed"]))
+        .where(func.date(Appointment.start_time) >= today)
+    ) or 0
+    
     # This month's revenue (from invoices)
     first_day_of_month = today.replace(day=1)
     revenue = await db.scalar(
@@ -84,13 +108,30 @@ async def get_dashboard_stats(
     patients_change = round(((patients_count - last_month_patients) / last_month_patients) * 100, 1) if last_month_patients > 0 else 0
     revenue_change = round(((revenue - last_month_revenue) / last_month_revenue) * 100, 1) if last_month_revenue > 0 else 0
     
+    # Get consultation count
+    from app.models.database import Consultation
+    total_consultations = await db.scalar(
+        select(func.count(Consultation.id))
+        .where(Consultation.clinic_id == clinic_id)
+    ) or 0
+    
+    consultations_today = await db.scalar(
+        select(func.count(Consultation.id))
+        .where(Consultation.clinic_id == clinic_id)
+        .where(func.date(Consultation.created_at) == today)
+    ) or 0
+    
     return {
         "total_patients": patients_count,
         "patients_change": f"+{patients_change}%" if patients_change > 0 else f"{patients_change}%",
         "today_appointments": today_appointments,
         "completed_appointments": completed_today,
+        "pending_appointments": pending_appointments,
         "total_records": records_count,
-        "records_this_week": 0,  # Placeholder
+        "records_this_week": records_this_week,
+        "total_staff": staff_count,
+        "total_consultations": total_consultations,
+        "consultations_today": consultations_today,
         "monthly_revenue": float(revenue),
         "revenue_change": f"+{revenue_change}%" if revenue_change > 0 else f"{revenue_change}%"
     }
