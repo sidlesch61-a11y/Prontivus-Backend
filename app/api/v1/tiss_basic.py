@@ -216,3 +216,72 @@ async def list_jobs(
     return []
 
 
+@router.get("/stats")
+async def get_tiss_stats(
+    current_user = Depends(AuthDependencies.get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get TISS statistics for the current clinic."""
+    try:
+        from sqlalchemy import func, cast, String
+        from datetime import date, timedelta
+        
+        clinic_id = current_user.clinic_id
+        today = date.today()
+        
+        # Total providers
+        total_providers = await db.scalar(
+            select(func.count(TISSProvider.id))
+            .where(TISSProvider.clinic_id == clinic_id)
+        ) or 0
+        
+        # Active providers
+        active_providers = await db.scalar(
+            select(func.count(TISSProvider.id))
+            .where(
+                and_(
+                    TISSProvider.clinic_id == clinic_id,
+                    cast(TISSProvider.status, String) == "active"
+                )
+            )
+        ) or 0
+        
+        # Since TISSJob table doesn't exist yet, return placeholder values
+        total_jobs = 0
+        jobs_today = 0
+        pending_jobs = 0
+        completed_jobs = 0
+        failed_jobs = 0
+        jobs_this_week = 0
+        success_rate = 0.0
+        
+        return {
+            "total_providers": total_providers,
+            "active_providers": active_providers,
+            "total_jobs": total_jobs,
+            "jobs_today": jobs_today,
+            "pending_jobs": pending_jobs,
+            "completed_jobs": completed_jobs,
+            "failed_jobs": failed_jobs,
+            "jobs_this_week": jobs_this_week,
+            "success_rate": success_rate
+        }
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting TISS stats: {str(e)}", exc_info=True)
+        # Return zeros if error
+        return {
+            "total_providers": 0,
+            "active_providers": 0,
+            "total_jobs": 0,
+            "jobs_today": 0,
+            "pending_jobs": 0,
+            "completed_jobs": 0,
+            "failed_jobs": 0,
+            "jobs_this_week": 0,
+            "success_rate": 0.0
+        }
+
+
