@@ -256,37 +256,35 @@ async def list_consultations(
         result = await db.execute(query.order_by(Consultation.created_at.desc()))
         consultations = result.scalars().all()
         
-        return {
-            "items": [
-                ConsultationResponse(
-                    id=str(c.id),
-                    patient_id=str(c.patient_id),
-                    appointment_id=str(c.appointment_id),
-                    doctor_id=str(c.doctor_id),
-                    chief_complaint=c.chief_complaint,
-                    history_present_illness=c.history_present_illness,
-                    past_medical_history=c.past_medical_history,
-                    family_history=c.family_history,
-                    social_history=c.social_history,
-                    medications_in_use=c.medications_in_use,
-                    allergies=c.allergies,
-                    physical_examination=c.physical_examination,
-                    vital_signs=c.vital_signs,
-                    diagnosis=c.diagnosis,
-                    diagnosis_code=c.diagnosis_code,
-                    treatment_plan=c.treatment_plan,
-                    follow_up=c.follow_up,
-                    notes=c.notes,
-                    is_locked=c.is_locked,
-                    locked_at=c.locked_at,
-                    locked_by=str(c.locked_by) if c.locked_by else None,
-                    created_at=c.created_at,
-                    updated_at=c.updated_at,
-                    clinic_id=str(c.clinic_id)
-                )
-                for c in consultations
-            ]
-        }
+        return [
+            ConsultationResponse(
+                id=str(c.id),
+                patient_id=str(c.patient_id),
+                appointment_id=str(c.appointment_id),
+                doctor_id=str(c.doctor_id),
+                chief_complaint=c.chief_complaint,
+                history_present_illness=c.history_present_illness,
+                past_medical_history=c.past_medical_history,
+                family_history=c.family_history,
+                social_history=c.social_history,
+                medications_in_use=c.medications_in_use,
+                allergies=c.allergies,
+                physical_examination=c.physical_examination,
+                vital_signs=c.vital_signs,
+                diagnosis=c.diagnosis,
+                diagnosis_code=c.diagnosis_code,
+                treatment_plan=c.treatment_plan,
+                follow_up=c.follow_up,
+                notes=c.notes,
+                is_locked=c.is_locked,
+                locked_at=c.locked_at,
+                locked_by=str(c.locked_by) if c.locked_by else None,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+                clinic_id=str(c.clinic_id)
+            )
+            for c in consultations
+        ]
     
     except Exception as e:
         import logging
