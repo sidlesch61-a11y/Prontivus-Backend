@@ -710,7 +710,7 @@ class QueuePatient(BaseModel):
 
 @router.get("/queue", response_model=List[QueuePatient])
 async def get_queue(
-    status: Optional[str] = Query(None, description="Filter by status: waiting, in_progress, completed"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status: waiting, in_progress, completed"),
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
@@ -723,6 +723,7 @@ async def get_queue(
     try:
         from app.models.database import Appointment, Patient, User
         from datetime import datetime, timedelta
+        from sqlalchemy import cast, String
         
         # Get today's date range
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -742,13 +743,13 @@ async def get_queue(
         )
         
         # Filter by status if provided
-        if status:
-            if status == "waiting":
-                query = query.where(Appointment.status.in_(["scheduled", "confirmed"]))
-            elif status == "in_progress":
-                query = query.where(Appointment.status == "in_progress")
-            elif status == "completed":
-                query = query.where(Appointment.status == "completed")
+        if status_filter:
+            if status_filter == "waiting":
+                query = query.where(cast(Appointment.status, String).in_(["scheduled", "confirmed"]))
+            elif status_filter == "in_progress":
+                query = query.where(cast(Appointment.status, String) == "in_progress")
+            elif status_filter == "completed":
+                query = query.where(cast(Appointment.status, String) == "completed")
         
         # Order by appointment time
         query = query.order_by(Appointment.start_time)
@@ -768,10 +769,11 @@ async def get_queue(
                 today = date.today()
                 age = today.year - patient.birthdate.year - ((today.month, today.day) < (patient.birthdate.month, patient.birthdate.day))
             
-            # Determine status
-            if appointment.status == "in_progress":
+            # Determine status based on appointment status
+            apt_status = str(appointment.status).lower() if appointment.status else "scheduled"
+            if apt_status == "in_progress":
                 status_str = "in_progress"
-            elif appointment.status == "completed":
+            elif apt_status in ["completed", "attended"]:
                 status_str = "completed"
             else:
                 status_str = "waiting"
@@ -779,16 +781,16 @@ async def get_queue(
             queue_patients.append(QueuePatient(
                 id=str(appointment.id),
                 patient_id=str(patient.id),
-                patient_name=patient.name,
-                patient_cpf=patient.cpf,
+                patient_name=patient.name or "Unknown",
+                patient_cpf=patient.cpf or "",
                 patient_age=age,
-                patient_gender=patient.gender,
+                patient_gender=patient.gender or "unknown",
                 appointment_id=str(appointment.id),
-                appointment_time=appointment.start_time.isoformat(),
-                doctor_name=doctor.name,
+                appointment_time=appointment.start_time.isoformat() if appointment.start_time else "",
+                doctor_name=doctor.name or "Doctor",
                 status=status_str,
                 position=position,
-                called_at=appointment.updated_at.isoformat() if appointment.status == "in_progress" else None
+                called_at=appointment.updated_at.isoformat() if appointment.status == "in_progress" and appointment.updated_at else None
             ))
             position += 1
         
