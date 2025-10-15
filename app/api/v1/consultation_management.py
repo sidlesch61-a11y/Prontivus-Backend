@@ -365,8 +365,7 @@ async def finalize_consultation(
             queue_entry.completed_at = datetime.now()
             queue_entry.updated_at = datetime.now()
         
-        # Update consultation status
-        consultation.status = "completed"
+        # Update consultation timestamp
         consultation.updated_at = datetime.now()
         
         # Also update appointment status so reservation list reflects changes
