@@ -300,7 +300,7 @@ async def call_patient(
 ):
     """Call a patient from the queue."""
     try:
-        # Find queue entry - get the first waiting entry for this patient
+        # Prefer an existing 'waiting' entry for this doctor
         stmt = select(QueueStatus).where(
             and_(
                 QueueStatus.patient_id == patient_id,
@@ -310,9 +310,48 @@ async def call_patient(
         ).order_by(QueueStatus.priority.desc(), QueueStatus.created_at.asc()).limit(1)
         result = await db.execute(stmt)
         queue_entry = result.scalar_one_or_none()
-        
+
+        # If not found, try any 'waiting' entry for this patient in the clinic
         if not queue_entry:
-            raise HTTPException(status_code=404, detail="Patient not in queue")
+            stmt_any = select(QueueStatus).where(
+                and_(
+                    QueueStatus.patient_id == patient_id,
+                    QueueStatus.status == "waiting"
+                )
+            ).order_by(QueueStatus.priority.desc(), QueueStatus.created_at.asc()).limit(1)
+            result_any = await db.execute(stmt_any)
+            queue_entry = result_any.scalar_one_or_none()
+
+        # If still not found, create a new queue entry linked to today's appointment (if any)
+        if not queue_entry:
+            # Try to find today's appointment for this patient and doctor
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = today_start + timedelta(days=1)
+            appt_stmt = select(Appointment).where(
+                and_(
+                    Appointment.patient_id == patient_id,
+                    Appointment.doctor_id == current_user.id,
+                    Appointment.start_time >= today_start,
+                    Appointment.start_time < today_end
+                )
+            ).order_by(Appointment.start_time.asc()).limit(1)
+            appt_result = await db.execute(appt_stmt)
+            appointment = appt_result.scalar_one_or_none()
+            if not appointment:
+                # No matching appointment today; cannot create queue entry safely
+                raise HTTPException(status_code=404, detail="Nenhum agendamento encontrado para este paciente hoje.")
+
+            queue_entry = QueueStatus(
+                appointment_id=appointment.id,
+                patient_id=patient_id,
+                doctor_id=current_user.id,
+                clinic_id=current_user.clinic_id,
+                status="waiting",
+                priority=0,
+                notes="Criado automaticamente ao chamar paciente"
+            )
+            db.add(queue_entry)
+            await db.flush()
         
         # Update status
         queue_entry.status = "in_progress"
@@ -330,7 +369,8 @@ async def call_patient(
         
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error calling patient: {str(e)}")
+        # Provide clearer error for debugging
+        raise HTTPException(status_code=500, detail=f"Error calling patient: {type(e).__name__}: {str(e)}")
 
 
 @router.post("/queue/finalize/{consultation_id}")
