@@ -201,6 +201,12 @@ async def update_patient(
     db: AsyncSession = Depends(get_db_session)
 ):
     """Update patient information."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"🔍 UPDATE REQUEST - Patient ID: {patient_id}")
+    logger.info(f"Update Data: {update_data.dict(exclude_unset=True)}")
+    
     # Get patient
     result = await db.execute(
         select(Patient).where(
@@ -211,18 +217,25 @@ async def update_patient(
     patient = result.scalar_one_or_none()
     
     if not patient:
+        logger.error(f"❌ Patient not found: {patient_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Patient not found"
         )
     
+    logger.info(f"Found patient: {patient.name} (ID: {patient.id}, CPF: {patient.cpf})")
+    
     # Update fields
     update_dict = update_data.dict(exclude_unset=True)
     for field, value in update_dict.items():
+        old_value = getattr(patient, field, None)
         setattr(patient, field, value)
+        logger.info(f"  {field}: {old_value} → {value}")
     
     await db.commit()
     await db.refresh(patient)
+    
+    logger.info(f"✅ Patient updated successfully: {patient.name} (ID: {patient.id})")
     
     # Create audit log
     audit_log = AuditLog(
