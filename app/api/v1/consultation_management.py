@@ -251,8 +251,8 @@ async def get_queue(
         ).where(
             and_(
                 QueueStatus.doctor_id == current_user.id,
-                QueueStatus.created_at >= today_start,
-                QueueStatus.created_at < today_end
+                Appointment.start_time >= today_start,
+                Appointment.start_time < today_end
             )
         )
         
