@@ -20,6 +20,7 @@ from app.models.consultation_extended import (
     ConsultationNotes, ConsultationNotesUpdate,
     VoiceNote, VoiceNoteCreate
 )
+from app.models.database import Consultation
 from app.models.database import User, Patient, Appointment
 
 router = APIRouter(prefix="/consultation-management", tags=["Consultation Management"])
@@ -573,4 +574,250 @@ def calculate_age(birthdate) -> int:
         return None
     today = datetime.now().date()
     return today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+
+# ============================================================================
+# ENHANCED CONSULTATION ENDPOINTS
+# ============================================================================
+
+@router.get("/consultations/{consultation_id}/summary")
+async def get_consultation_summary(
+    consultation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get comprehensive consultation summary with all related data."""
+    try:
+        # Get consultation
+        stmt = select(Consultation).where(Consultation.id == consultation_id)
+        result = await db.execute(stmt)
+        consultation = result.scalar_one_or_none()
+        
+        if not consultation:
+            raise HTTPException(status_code=404, detail="Consultation not found")
+        
+        # Get patient
+        stmt = select(Patient).where(Patient.id == consultation.patient_id)
+        result = await db.execute(stmt)
+        patient = result.scalar_one_or_none()
+        
+        # Get vitals
+        stmt = select(Vitals).where(Vitals.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        vitals = result.scalar_one_or_none()
+        
+        # Get notes
+        stmt = select(ConsultationNotes).where(ConsultationNotes.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        notes = result.scalar_one_or_none()
+        
+        # Get attachments count
+        stmt = select(Attachment).where(Attachment.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        attachments = result.scalars().all()
+        
+        return {
+            "consultation": {
+                "id": str(consultation.id),
+                "chief_complaint": consultation.chief_complaint,
+                "diagnosis": consultation.diagnosis,
+                "created_at": consultation.created_at,
+                "updated_at": consultation.updated_at
+            },
+            "patient": {
+                "id": str(patient.id),
+                "name": patient.name,
+                "cpf": patient.cpf,
+                "age": calculate_age(patient.birth_date) if patient.birth_date else None
+            } if patient else None,
+            "vitals": {
+                "blood_pressure": vitals.blood_pressure,
+                "heart_rate": vitals.heart_rate,
+                "temperature": vitals.temperature,
+                "weight": vitals.weight,
+                "height": vitals.height,
+                "respiratory_rate": vitals.respiratory_rate,
+                "oxygen_saturation": vitals.oxygen_saturation,
+                "recorded_at": vitals.recorded_at
+            } if vitals else None,
+            "notes": {
+                "anamnese": notes.anamnese if notes else None,
+                "exame_fisico": notes.exame_fisico if notes else None,
+                "evolucao": notes.evolucao if notes else None,
+                "diagnostico": notes.diagnostico if notes else None,
+                "conduta": notes.conduta if notes else None
+            },
+            "attachments_count": len(attachments),
+            "has_vitals": vitals is not None,
+            "has_notes": notes is not None
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting consultation summary: {str(e)}")
+
+@router.get("/consultations/stats")
+async def get_consultation_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get consultation statistics for the current user's clinic."""
+    try:
+        # Today's consultations
+        today = datetime.now().date()
+        stmt = select(Consultation).where(
+            and_(
+                Consultation.clinic_id == current_user.clinic_id,
+                Consultation.created_at >= today
+            )
+        )
+        result = await db.execute(stmt)
+        today_consultations = result.scalars().all()
+        
+        # Queue status counts
+        stmt = select(QueueStatus).where(QueueStatus.doctor_id == current_user.id)
+        result = await db.execute(stmt)
+        queue_entries = result.scalars().all()
+        
+        waiting_count = len([q for q in queue_entries if q.status == "waiting"])
+        in_progress_count = len([q for q in queue_entries if q.status == "in_progress"])
+        completed_count = len([q for q in queue_entries if q.status == "completed"])
+        
+        # This week's consultations
+        week_start = today - timedelta(days=today.weekday())
+        stmt = select(Consultation).where(
+            and_(
+                Consultation.clinic_id == current_user.clinic_id,
+                Consultation.created_at >= week_start
+            )
+        )
+        result = await db.execute(stmt)
+        week_consultations = result.scalars().all()
+        
+        return {
+            "today": {
+                "total_consultations": len(today_consultations),
+                "waiting": waiting_count,
+                "in_progress": in_progress_count,
+                "completed": completed_count
+            },
+            "this_week": {
+                "total_consultations": len(week_consultations)
+            },
+            "queue_status": {
+                "waiting": waiting_count,
+                "in_progress": in_progress_count,
+                "completed": completed_count
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting consultation stats: {str(e)}")
+
+@router.post("/consultations/{consultation_id}/reopen")
+async def reopen_consultation(
+    consultation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Reopen a completed consultation for review or additional notes."""
+    try:
+        # Get consultation
+        stmt = select(Consultation).where(Consultation.id == consultation_id)
+        result = await db.execute(stmt)
+        consultation = result.scalar_one_or_none()
+        
+        if not consultation:
+            raise HTTPException(status_code=404, detail="Consultation not found")
+        
+        # Get patient
+        stmt = select(Patient).where(Patient.id == consultation.patient_id)
+        result = await db.execute(stmt)
+        patient = result.scalar_one_or_none()
+        
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        
+        # Create new queue entry for reopening
+        queue_entry = QueueStatus(
+            patient_id=patient.id,
+            doctor_id=current_user.id,
+            status="in_progress",
+            notes="Consulta reaberta para revisão"
+        )
+        
+        db.add(queue_entry)
+        await db.commit()
+        await db.refresh(queue_entry)
+        
+        return {
+            "message": "Consultation reopened successfully",
+            "consultation_id": consultation_id,
+            "patient_id": str(patient.id),
+            "queue_id": str(queue_entry.id)
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error reopening consultation: {str(e)}")
+
+@router.get("/consultations/{consultation_id}/documents")
+async def get_consultation_documents(
+    consultation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get all documents related to a consultation."""
+    try:
+        # Get attachments
+        stmt = select(Attachment).where(Attachment.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        attachments = result.scalars().all()
+        
+        # Get prescriptions (if exists)
+        from app.models.database import Prescription
+        stmt = select(Prescription).where(Prescription.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        prescriptions = result.scalars().all()
+        
+        # Get TISS guides (if exists)
+        from app.models.database import TissGuide
+        stmt = select(TissGuide).where(TissGuide.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        tiss_guides = result.scalars().all()
+        
+        return {
+            "attachments": [
+                {
+                    "id": str(att.id),
+                    "file_name": att.file_name,
+                    "file_type": att.file_type,
+                    "file_size": att.file_size,
+                    "description": att.description,
+                    "category": att.category,
+                    "created_at": att.created_at
+                }
+                for att in attachments
+            ],
+            "prescriptions": [
+                {
+                    "id": str(pres.id),
+                    "status": pres.status,
+                    "notes": pres.notes,
+                    "created_at": pres.created_at,
+                    "pdf_url": pres.pdf_url
+                }
+                for pres in prescriptions
+            ],
+            "tiss_guides": [
+                {
+                    "id": str(guide.id),
+                    "status": guide.status,
+                    "xml_url": guide.xml_url,
+                    "created_at": guide.created_at
+                }
+                for guide in tiss_guides
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting consultation documents: {str(e)}")
 
