@@ -5,7 +5,7 @@ Patients API endpoints.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 
 from app.core.auth import get_current_user, require_patients_read, require_patients_write
 from app.db.session import get_db_session
@@ -261,9 +261,29 @@ async def delete_patient(
             detail="Patient not found"
         )
     
-    # Soft delete: mark as archived (if archived field exists)
-    # Otherwise, just delete related audit logs and then patient
+    # Check if patient has related records (appointments, consultations, etc.)
     try:
+        from app.models.database import Appointment, MedicalRecord, Invoice
+        
+        # Check for related appointments
+        appointments_result = await db.execute(
+            select(func.count(Appointment.id)).where(Appointment.patient_id == patient_id)
+        )
+        appointments_count = appointments_result.scalar()
+        
+        # Check for related medical records
+        records_result = await db.execute(
+            select(func.count(MedicalRecord.id)).where(MedicalRecord.patient_id == patient_id)
+        )
+        records_count = records_result.scalar()
+        
+        # If patient has related records, prevent deletion
+        if appointments_count > 0 or records_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Não é possível excluir este paciente. Existem {appointments_count} consulta(s) e {records_count} prontuário(s) vinculados. Para preservar o histórico médico, os dados não podem ser removidos."
+            )
+        
         # Create audit log
         audit_log = AuditLog(
             clinic_id=current_user.clinic_id,
@@ -275,19 +295,16 @@ async def delete_patient(
         )
         db.add(audit_log)
         
-        # Check if patient has the 'archived' attribute for soft delete
-        if hasattr(patient, 'archived'):
-            patient.archived = True
-            await db.commit()
-        else:
-            # Hard delete - CASCADE should handle related records
-            await db.delete(patient)
-            await db.commit()
+        # Only delete if no related records exist
+        await db.delete(patient)
+        await db.commit()
         
-        return {"message": "Patient deleted successfully"}
+        return {"message": "Paciente excluído com sucesso"}
+    except HTTPException:
+        raise
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete patient. Patient may have related records. Error: {str(e)}"
+            detail=f"Falha ao excluir paciente. Erro: {str(e)}"
         )
