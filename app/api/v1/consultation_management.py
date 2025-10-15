@@ -226,11 +226,12 @@ async def get_queue(
         
         # Create queue entries for appointments without them
         for appointment, patient in appointments_rows:
-            # Check if queue entry exists
-            existing_queue = await db.execute(
-                select(QueueStatus).where(QueueStatus.appointment_id == appointment.id)
+            # Check if at least one queue entry exists (avoid MultipleRowsFound)
+            existing_queue_result = await db.execute(
+                select(QueueStatus.id).where(QueueStatus.appointment_id == appointment.id).limit(1)
             )
-            if not existing_queue.scalar_one_or_none():
+            existing_entry = existing_queue_result.scalar_one_or_none()
+            if existing_entry is None:
                 # Create queue entry
                 queue_entry = QueueStatus(
                     appointment_id=appointment.id,
