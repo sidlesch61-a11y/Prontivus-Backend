@@ -17,9 +17,65 @@ from app.models.consultation_extended import (
     ExamRequest, ExamRequestCreate,
     Referral, ReferralCreate
 )
+from pydantic import BaseModel
+from typing import List, Optional
 from app.models.database import User, Prescription
 
 router = APIRouter(prefix="/quick-actions", tags=["Quick Actions"])
+
+# ============================================================================
+# REQUEST MODELS
+# ============================================================================
+
+class PrescriptionCreateRequest(BaseModel):
+    consultation_id: str
+    patient_id: str
+    items: List[dict]
+    notes: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            uuid.UUID: str
+        }
+
+class CertificateCreateRequest(BaseModel):
+    consultation_id: str
+    patient_id: str
+    certificate_type: str
+    content: str
+    days_off: Optional[str] = None
+    cid10_code: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            uuid.UUID: str
+        }
+
+class ExamRequestCreateRequest(BaseModel):
+    consultation_id: str
+    patient_id: str
+    exam_type: str
+    description: str
+    urgency: str = "normal"
+    instructions: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            uuid.UUID: str
+        }
+
+class ReferralCreateRequest(BaseModel):
+    consultation_id: str
+    patient_id: str
+    specialty: str
+    reason: str
+    urgency: str = "normal"
+    notes: Optional[str] = None
+    
+    class Config:
+        json_encoders = {
+            uuid.UUID: str
+        }
 
 # ============================================================================
 # PRESCRIPTION ENDPOINTS
@@ -27,15 +83,24 @@ router = APIRouter(prefix="/quick-actions", tags=["Quick Actions"])
 
 @router.post("/prescriptions/create")
 async def create_prescription_with_items(
-    consultation_id: uuid.UUID,
-    patient_id: uuid.UUID,
-    items: List[PrescriptionItemCreate],
-    notes: str = None,
+    request_data: PrescriptionCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create a prescription with multiple items."""
     try:
+        # Extract data from request
+        consultation_id = request_data.consultation_id
+        patient_id = request_data.patient_id
+        items = request_data.items
+        notes = request_data.notes
+        
+        if not consultation_id or not patient_id:
+            raise HTTPException(status_code=400, detail="consultation_id and patient_id are required")
+        
+        if not items:
+            raise HTTPException(status_code=400, detail="At least one medication item is required")
+        
         # Create prescription
         prescription = Prescription(
             consultation_id=consultation_id,
@@ -53,7 +118,7 @@ async def create_prescription_with_items(
         for item_data in items:
             item = PrescriptionItem(
                 prescription_id=prescription.id,
-                **item_data.dict()
+                **item_data
             )
             db.add(item)
         
@@ -138,15 +203,24 @@ async def generate_prescription_pdf_endpoint(
 
 @router.post("/certificates/create")
 async def create_medical_certificate(
-    certificate_data: MedicalCertificateCreate,
+    request_data: CertificateCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create a medical certificate (atestado)."""
     try:
+        # Extract data from request
+        consultation_id = request_data.consultation_id
+        patient_id = request_data.patient_id
+        
         certificate = MedicalCertificate(
-            **certificate_data.dict(),
-            doctor_id=current_user.id
+            consultation_id=consultation_id,
+            patient_id=patient_id,
+            doctor_id=current_user.id,
+            certificate_type=request_data.certificate_type,
+            content=request_data.content,
+            days_off=request_data.days_off,
+            cid10_code=request_data.cid10_code
         )
         
         db.add(certificate)
@@ -223,15 +297,24 @@ async def generate_certificate_pdf_endpoint(
 
 @router.post("/exam-requests/create")
 async def create_exam_request(
-    exam_data: ExamRequestCreate,
+    request_data: ExamRequestCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create an exam request (solicitação de exame)."""
     try:
+        # Extract data from request
+        consultation_id = request_data.consultation_id
+        patient_id = request_data.patient_id
+        
         exam_request = ExamRequest(
-            **exam_data.dict(),
-            doctor_id=current_user.id
+            consultation_id=consultation_id,
+            patient_id=patient_id,
+            doctor_id=current_user.id,
+            exam_type=request_data.exam_type,
+            description=request_data.description,
+            urgency=request_data.urgency,
+            instructions=request_data.instructions
         )
         
         db.add(exam_request)
@@ -309,15 +392,24 @@ async def generate_exam_request_pdf_endpoint(
 
 @router.post("/referrals/create")
 async def create_referral(
-    referral_data: ReferralCreate,
+    request_data: ReferralCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create a referral (encaminhamento)."""
     try:
+        # Extract data from request
+        consultation_id = request_data.consultation_id
+        patient_id = request_data.patient_id
+        
         referral = Referral(
-            **referral_data.dict(),
-            doctor_id=current_user.id
+            consultation_id=consultation_id,
+            patient_id=patient_id,
+            doctor_id=current_user.id,
+            specialty=request_data.specialty,
+            reason=request_data.reason,
+            urgency=request_data.urgency,
+            notes=request_data.notes
         )
         
         db.add(referral)
