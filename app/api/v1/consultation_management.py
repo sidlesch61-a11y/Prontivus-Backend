@@ -82,7 +82,23 @@ async def get_vitals(
     vitals = result.scalar_one_or_none()
     
     if not vitals:
-        raise HTTPException(status_code=404, detail="Vitals not found")
+        # Return an empty/default payload instead of 404 for better UX
+        return VitalsResponse(
+            id=uuid.uuid4(),  # ephemeral id for client-side handling
+            consultation_id=consultation_id,
+            patient_id=current_user.id,  # placeholder; frontend doesn't use this on empty state
+            blood_pressure=None,
+            heart_rate=None,
+            temperature=None,
+            weight=None,
+            height=None,
+            respiratory_rate=None,
+            oxygen_saturation=None,
+            recorded_by=current_user.id,
+            recorded_at=datetime.now(),
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
     
     return vitals
 
