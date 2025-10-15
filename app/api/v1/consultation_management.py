@@ -369,6 +369,19 @@ async def finalize_consultation(
         consultation.status = "completed"
         consultation.updated_at = datetime.now()
         
+        # Also update appointment status so reservation list reflects changes
+        try:
+            from app.models.database import Appointment
+            appt_stmt = select(Appointment).where(Appointment.id == consultation.appointment_id)
+            appt_result = await db.execute(appt_stmt)
+            appointment = appt_result.scalar_one_or_none()
+            if appointment:
+                appointment.status = "attended"
+                appointment.updated_at = datetime.now()
+        except Exception:
+            # Do not block finalization if appointment update fails
+            pass
+
         await db.commit()
         
         # Get next patient in queue
@@ -390,6 +403,53 @@ async def finalize_consultation(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error finalizing consultation: {str(e)}")
+
+
+@router.post("/queue/return/{consultation_id}")
+async def return_patient_to_waiting(
+    consultation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Return a patient to waiting state without completing the consultation."""
+    try:
+        from app.models.database import Consultation
+
+        # Load consultation to get appointment_id
+        stmt = select(Consultation).where(Consultation.id == consultation_id)
+        result = await db.execute(stmt)
+        consultation = result.scalar_one_or_none()
+
+        if not consultation:
+            raise HTTPException(status_code=404, detail="Consultation not found")
+
+        # Find queue entry for this appointment/doctor
+        stmt = select(QueueStatus).where(
+            and_(
+                QueueStatus.appointment_id == consultation.appointment_id,
+                QueueStatus.doctor_id == current_user.id
+            )
+        )
+        result = await db.execute(stmt)
+        queue_entry = result.scalar_one_or_none()
+
+        if not queue_entry:
+            raise HTTPException(status_code=404, detail="Queue entry not found")
+
+        # Set back to waiting, clear in-progress timestamps
+        queue_entry.status = "waiting"
+        queue_entry.updated_at = datetime.now()
+        queue_entry.called_at = None
+        queue_entry.started_at = None
+
+        await db.commit()
+
+        return {"message": "Patient returned to waiting queue"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error returning patient to queue: {str(e)}")
 
 
 # ============================================================================
