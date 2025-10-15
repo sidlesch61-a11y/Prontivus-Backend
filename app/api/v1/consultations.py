@@ -837,7 +837,8 @@ async def generate_tiss(
         
         # Header
         header = ET.SubElement(root, "cabecalho")
-        ET.SubElement(header, "registroANS").text = current_user.clinic_id[:6]
+        # Ensure clinic_id is string before slicing
+        ET.SubElement(header, "registroANS").text = str(current_user.clinic_id)[:6]
         ET.SubElement(header, "dataEmissao").text = datetime.now().strftime("%Y-%m-%d")
         
         # Patient data
