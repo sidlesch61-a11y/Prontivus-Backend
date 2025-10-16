@@ -4,6 +4,7 @@ Pricing API for automatic consultation pricing based on insurance.
 
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from app.core.database import get_db_session

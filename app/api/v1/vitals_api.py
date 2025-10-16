@@ -4,6 +4,7 @@ Vitals API for patient vital signs with height field.
 
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from app.core.database import get_db_session
