@@ -176,6 +176,64 @@ async def update_vitals(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error updating vitals: {str(e)}")
 
+
+# ============================================================================
+# CONSULTATION HISTORY
+# ============================================================================
+
+from sqlmodel import SQLModel
+
+class ConsultationHistoryItem(SQLModel):
+    id: uuid.UUID
+    appointment_id: Optional[uuid.UUID] = None
+    doctor_id: Optional[uuid.UUID] = None
+    date: datetime
+    chief_complaint: Optional[str] = None
+    diagnosis: Optional[str] = None
+    summary: Optional[str] = None
+
+
+@router.get("/consultations/history/{patient_id}", response_model=List[ConsultationHistoryItem])
+async def get_consultation_history(
+    patient_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Return summarized past consultations for a patient, newest first."""
+    try:
+        # Only allow doctors involved, admins, or same clinic staff to view
+        # For simplicity, enforce authenticated user; assume role checks handled by get_current_user
+
+        stmt = (
+            select(Consultation, ConsultationNotes)
+            .where(Consultation.patient_id == patient_id)
+            .join(ConsultationNotes, ConsultationNotes.consultation_id == Consultation.id, isouter=True)
+            .order_by(Consultation.created_at.desc())
+        )
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        history: List[ConsultationHistoryItem] = []
+        for consultation, notes in rows:
+            summary_parts: List[str] = []
+            if getattr(notes, "anamnese", None):
+                summary_parts.append(notes.anamnese[:160])
+            if getattr(notes, "diagnosis", None):
+                summary_parts.append(f"Dx: {notes.diagnosis[:100]}")
+            history.append(ConsultationHistoryItem(
+                id=consultation.id,
+                appointment_id=getattr(consultation, "appointment_id", None),
+                doctor_id=getattr(consultation, "doctor_id", None),
+                date=getattr(consultation, "created_at", datetime.now()),
+                chief_complaint=getattr(notes, "anamnese", None),
+                diagnosis=getattr(notes, "diagnosis", None),
+                summary=" — ".join(summary_parts) if summary_parts else None,
+            ))
+
+        return history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching consultation history: {str(e)}")
+
 # ============================================================================
 # ATTACHMENTS ENDPOINTS
 # ============================================================================

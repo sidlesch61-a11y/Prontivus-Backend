@@ -23,6 +23,7 @@ from app.db.session import get_db_session
 from app.services.tiss_service import TISSService
 from app.core.security import security
 from app.workers.tiss_tasks import process_tiss_job_task
+from app.models.database import Patient, User, Consultation
 
 logger = logging.getLogger(__name__)
 
@@ -594,6 +595,103 @@ async def get_tiss_job_logs(
     logs = db.exec(statement).all()
     
     return [TISSLogResponse.from_orm(log) for log in logs]
+
+
+# ---------------------------------------------------------------------------
+# Simple Generate Endpoint (SADT or CONSULTA)
+# ---------------------------------------------------------------------------
+@router.post("/generate")
+async def generate_tiss_guide(
+    payload: dict,
+    current_user = Depends(AuthDependencies.get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Generate a TISS guide (simplified sync flow)."""
+    try:
+        clinic_id = current_user.clinic_id
+        guide_type = (payload or {}).get("type", "CONSULTA")
+        consultation_id = (payload or {}).get("consultation_id")
+
+        if not consultation_id:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="consultation_id é obrigatório")
+
+        # Load consultation, patient, doctor
+        cons_stmt = select(Consultation).where(Consultation.id == consultation_id)
+        cons = (await db.execute(cons_stmt)).scalar_one_or_none()
+        if not cons:
+            raise HTTPException(status_code=404, detail="Consulta não encontrada")
+
+        pat = (await db.execute(select(Patient).where(Patient.id == cons.patient_id))).scalar_one_or_none()
+        if not pat:
+            raise HTTPException(status_code=404, detail="Paciente não encontrado")
+
+        doc = (await db.execute(select(User).where(User.id == cons.doctor_id))).scalar_one_or_none()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Médico não encontrado")
+
+        # Basic validation of convênio/particular
+        convenio = getattr(pat, "insurance_provider", None)
+        payment_type = getattr(pat, "payment_type", None)  # "particular" or "convenio"
+        if not convenio and (payment_type or "").lower() != "particular":
+            logger.warning("TISS generate: paciente sem convênio configurado")
+
+        # Build minimal XML/JSON structure (placeholder)
+        generated_at = datetime.utcnow().isoformat()
+        xml_stub = f"""
+<tiss>
+  <cabecalho>
+    <registroANS>{str(clinic_id)[:8]}</registroANS>
+    <dataGeracao>{generated_at}</dataGeracao>
+    <tipoGuia>{guide_type}</tipoGuia>
+  </cabecalho>
+  <dadosBeneficiario>
+    <nome>{getattr(pat, 'name', '')}</nome>
+    <numeroCarteira>{getattr(pat, 'insurance_number', '')}</numeroCarteira>
+    <operadora>{convenio or 'PARTICULAR'}</operadora>
+  </dadosBeneficiario>
+  <dadosProfissionais>
+    <medico>{getattr(doc, 'full_name', getattr(doc, 'name', ''))}</medico>
+    <crm>{getattr(doc, 'license_number', '')}</crm>
+  </dadosProfissionais>
+  <dadosAtendimento>
+    <consultaId>{consultation_id}</consultaId>
+  </dadosAtendimento>
+</tiss>
+""".strip()
+
+        # Log success
+        log = TISSLog(
+            clinic_id=clinic_id,
+            level=TISSLogLevel.INFO,
+            message=f"Guia TISS gerada ({guide_type})",
+            operation="generate",
+            user_id=current_user.id,
+            details={
+                "consultation_id": str(consultation_id),
+                "type": guide_type,
+                "patient_id": str(pat.id),
+                "doctor_id": str(doc.id),
+            },
+        )
+        db.add(log)
+        await db.commit()
+
+        return {
+            "status": "ok",
+            "type": guide_type,
+            "consultation_id": str(consultation_id),
+            "xml": xml_stub,
+            "generated_at": generated_at,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro ao gerar guia TISS", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao gerar guia TISS: {str(e)}",
+        )
 
 @router.get("/logs", response_model=List[TISSLogResponse])
 async def list_tiss_logs(
