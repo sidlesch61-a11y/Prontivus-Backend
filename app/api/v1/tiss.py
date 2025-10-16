@@ -589,7 +589,8 @@ async def get_tiss_job_logs(
         )
     ).order_by(TISSLog.created_at.desc()).offset(offset).limit(limit)
     
-    logs = db.exec(statement).all()
+    result = await db.execute(statement)
+    logs = result.scalars().all()
     
     return [TISSLogResponse.from_orm(log) for log in logs]
 
@@ -656,22 +657,8 @@ async def generate_tiss_guide(
 </tiss>
 """.strip()
 
-        # Log success
-        log = TISSLog(
-            clinic_id=clinic_id,
-            level=TISSLogLevel.INFO,
-            message=f"Guia TISS gerada ({guide_type})",
-            operation="generate",
-            user_id=current_user.id,
-            details={
-                "consultation_id": str(consultation_id),
-                "type": guide_type,
-                "patient_id": str(pat.id),
-                "doctor_id": str(doc.id),
-            },
-        )
-        db.add(log)
-        await db.commit()
+        # Log success (simplified - skip TISSLog for now)
+        logger.info(f"TISS guide generated: {guide_type} for consultation {consultation_id}")
 
         return {
             "status": "ok",
