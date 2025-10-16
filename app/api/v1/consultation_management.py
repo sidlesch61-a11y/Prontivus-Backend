@@ -29,6 +29,33 @@ router = APIRouter(prefix="/consultation-management", tags=["Consultation Manage
 # VITALS ENDPOINTS
 # ============================================================================
 
+def _coerce_vitals_payload(payload: dict) -> dict:
+    """Coerce incoming vitals values to correct types when sent as strings from the frontend."""
+    if payload is None:
+        return {}
+    coerced = dict(payload)
+    # Integer fields
+    for key in ["heart_rate", "respiratory_rate", "oxygen_saturation"]:
+        if key in coerced and coerced[key] is not None and coerced[key] != "":
+            try:
+                if isinstance(coerced[key], str):
+                    coerced[key] = int(coerced[key])
+            except Exception:
+                pass
+    # Float fields
+    for key in ["temperature", "weight", "height"]:
+        if key in coerced and coerced[key] is not None and coerced[key] != "":
+            try:
+                if isinstance(coerced[key], str):
+                    coerced[key] = float(str(coerced[key]).replace(",", "."))
+            except Exception:
+                pass
+    # Normalize empty strings to None
+    for key, value in list(coerced.items()):
+        if value == "":
+            coerced[key] = None
+    return coerced
+
 @router.post("/vitals", response_model=VitalsResponse)
 async def create_vitals(
     vitals_data: VitalsCreate,
@@ -44,7 +71,8 @@ async def create_vitals(
         
         if existing_vitals:
             # Update existing vitals
-            for key, value in vitals_data.dict(exclude_unset=True).items():
+            incoming = _coerce_vitals_payload(vitals_data.dict(exclude_unset=True))
+            for key, value in incoming.items():
                 if key not in ['consultation_id', 'patient_id']:
                     setattr(existing_vitals, key, value)
             existing_vitals.updated_at = datetime.now()
@@ -55,8 +83,9 @@ async def create_vitals(
             return existing_vitals
         else:
             # Create new vitals
+            incoming = _coerce_vitals_payload(vitals_data.dict())
             new_vitals = Vitals(
-                **vitals_data.dict(),
+                **incoming,
                 recorded_by=current_user.id,
                 recorded_at=datetime.now()
             )
@@ -119,7 +148,7 @@ async def update_vitals(
 
         if existing_vitals:
             # Update allowed fields
-            payload = vitals_data.dict(exclude_unset=True)
+            payload = _coerce_vitals_payload(vitals_data.dict(exclude_unset=True))
             for key, value in payload.items():
                 if key not in ["consultation_id", "patient_id"]:
                     setattr(existing_vitals, key, value)
@@ -131,7 +160,7 @@ async def update_vitals(
             return existing_vitals
 
         # Create new vitals if none exist
-        create_payload = vitals_data.dict()
+        create_payload = _coerce_vitals_payload(vitals_data.dict())
         create_payload["consultation_id"] = consultation_id
         new_vitals = Vitals(
             **create_payload,
