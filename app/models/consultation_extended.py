@@ -165,7 +165,7 @@ class ExamRequest(ExamRequestBase, table=True):
     consultation_id: uuid.UUID = Field(foreign_key="consultations.id")
     patient_id: uuid.UUID = Field(foreign_key="patients.id")
     doctor_id: uuid.UUID = Field(foreign_key="users.id")
-    tiss_guide_id: Optional[uuid.UUID] = Field(default=None, foreign_key="tiss_guides.id")
+    tiss_guide_id: Optional[uuid.UUID] = Field(default=None)  # Removed foreign key constraint since tiss_guides table doesn't exist
     pdf_url: Optional[str] = None
     status: str = Field(default="pending")  # pending, scheduled, completed, cancelled
     requested_at: datetime = Field(default_factory=datetime.now)
