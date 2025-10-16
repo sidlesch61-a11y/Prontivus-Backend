@@ -289,7 +289,7 @@ async def test_tiss_provider_connection(
             details=test_result.dict()
         )
         db.add(log)
-        db.commit()
+        await db.commit()
         
         logger.info(f"TISS provider connection test: {provider.id} - {'success' if test_result.success else 'failed'}")
         
@@ -308,7 +308,7 @@ async def test_tiss_provider_connection(
             user_id=current_user.id
         )
         db.add(log)
-        db.commit()
+        await db.commit()
         
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -326,15 +326,14 @@ async def create_tiss_job(
     
     try:
         # Verify provider exists and belongs to clinic
-        provider = db.exec(
-            select(TISSProvider).where(
-                and_(
-                    TISSProvider.id == job_data.provider_id,
-                    TISSProvider.clinic_id == current_user.clinic_id,
-                    TISSProvider.status == TISSProviderStatus.ACTIVE
-                )
+        provider_stmt = select(TISSProvider).where(
+            and_(
+                TISSProvider.id == job_data.provider_id,
+                TISSProvider.clinic_id == current_user.clinic_id,
+                TISSProvider.status == TISSProviderStatus.ACTIVE
             )
-        ).first()
+        )
+        provider = (await db.execute(provider_stmt)).scalar_one_or_none()
         
         if not provider:
             raise HTTPException(
@@ -377,7 +376,7 @@ async def create_tiss_job(
                 }
             )
             db.add(log)
-            db.commit()
+            await db.commit()
             
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -398,8 +397,8 @@ async def create_tiss_job(
         )
         
         db.add(job)
-        db.commit()
-        db.refresh(job)
+        await db.commit()
+        await db.refresh(job)
         
         # Log the job creation
         log = TISSLog(
@@ -418,7 +417,7 @@ async def create_tiss_job(
             }
         )
         db.add(log)
-        db.commit()
+        await db.commit()
         
         # Queue the job for processing
         process_tiss_job_task.delay(str(job.id))
@@ -461,7 +460,8 @@ async def list_tiss_jobs(
     
     statement = statement.order_by(TISSJob.created_at.desc()).offset(offset).limit(limit)
     
-    jobs = db.exec(statement).all()
+    result = await db.execute(statement)
+    jobs = result.scalars().all()
     
     return [TISSJobResponse.from_orm(job) for job in jobs]
 
@@ -473,14 +473,13 @@ async def get_tiss_job(
 ):
     """Get TISS job by ID."""
     
-    job = db.exec(
-        select(TISSJob).where(
-            and_(
-                TISSJob.id == job_id,
-                TISSJob.clinic_id == current_user.clinic_id
-            )
+    job_stmt = select(TISSJob).where(
+        and_(
+            TISSJob.id == job_id,
+            TISSJob.clinic_id == current_user.clinic_id
         )
-    ).first()
+    )
+    job = (await db.execute(job_stmt)).scalar_one_or_none()
     
     if not job:
         raise HTTPException(
@@ -498,14 +497,13 @@ async def reprocess_tiss_job(
 ):
     """Reprocess a TISS job."""
     
-    job = db.exec(
-        select(TISSJob).where(
-            and_(
-                TISSJob.id == job_id,
-                TISSJob.clinic_id == current_user.clinic_id
-            )
+    job_stmt = select(TISSJob).where(
+        and_(
+            TISSJob.id == job_id,
+            TISSJob.clinic_id == current_user.clinic_id
         )
-    ).first()
+    )
+    job = (await db.execute(job_stmt)).scalar_one_or_none()
     
     if not job:
         raise HTTPException(
@@ -542,7 +540,7 @@ async def reprocess_tiss_job(
             details={"previous_status": job.status}
         )
         db.add(log)
-        db.commit()
+        await db.commit()
         
         # Queue the job for processing
         process_tiss_job_task.delay(str(job.id))
@@ -569,14 +567,13 @@ async def get_tiss_job_logs(
     """Get logs for a specific TISS job."""
     
     # Verify job exists and belongs to clinic
-    job = db.exec(
-        select(TISSJob).where(
-            and_(
-                TISSJob.id == job_id,
-                TISSJob.clinic_id == current_user.clinic_id
-            )
+    job_stmt = select(TISSJob).where(
+        and_(
+            TISSJob.id == job_id,
+            TISSJob.clinic_id == current_user.clinic_id
         )
-    ).first()
+    )
+    job = (await db.execute(job_stmt)).scalar_one_or_none()
     
     if not job:
         raise HTTPException(
@@ -718,7 +715,8 @@ async def list_tiss_logs(
     
     statement = statement.order_by(TISSLog.created_at.desc()).offset(offset).limit(limit)
     
-    logs = db.exec(statement).all()
+    result = await db.execute(statement)
+    logs = result.scalars().all()
     
     return [TISSLogResponse.from_orm(log) for log in logs]
 
@@ -743,7 +741,8 @@ async def list_tiss_ethical_locks(
     
     statement = statement.order_by(TISSEthicalLock.created_at.desc()).offset(offset).limit(limit)
     
-    locks = db.exec(statement).all()
+    result = await db.execute(statement)
+    locks = result.scalars().all()
     
     return [TISSEthicalLockResponse.from_orm(lock) for lock in locks]
 
@@ -756,14 +755,13 @@ async def resolve_tiss_ethical_lock(
 ):
     """Resolve a TISS ethical lock."""
     
-    ethical_lock = db.exec(
-        select(TISSEthicalLock).where(
-            and_(
-                TISSEthicalLock.id == lock_id,
-                TISSEthicalLock.clinic_id == current_user.clinic_id
-            )
+    ethical_lock_stmt = select(TISSEthicalLock).where(
+        and_(
+            TISSEthicalLock.id == lock_id,
+            TISSEthicalLock.clinic_id == current_user.clinic_id
         )
-    ).first()
+    )
+    ethical_lock = (await db.execute(ethical_lock_stmt)).scalar_one_or_none()
     
     if not ethical_lock:
         raise HTTPException(
@@ -801,7 +799,7 @@ async def resolve_tiss_ethical_lock(
             }
         )
         db.add(log)
-        db.commit()
+        await db.commit()
         
         logger.info(f"TISS ethical lock resolved: {lock_id} by user {current_user.id}")
         
