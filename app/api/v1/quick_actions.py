@@ -55,7 +55,7 @@ class ExamRequestCreateRequest(BaseModel):
     consultation_id: str
     patient_id: str
     exam_type: str
-    description: str
+    clinical_indication: str  # Changed from description to clinical_indication
     exam_name: Optional[str] = None  # Optional field for exam name
     urgency: str = "normal"
     instructions: Optional[str] = None
@@ -320,8 +320,8 @@ async def create_exam_request(
             patient_id=patient_id,
             doctor_id=current_user.id,
             exam_type=request_data.exam_type,
-            exam_name=request_data.exam_name or request_data.description,  # Use exam_name if provided, otherwise use description
-            clinical_indication=request_data.description,  # Map description to clinical_indication
+            exam_name=request_data.exam_name or request_data.clinical_indication,  # Use exam_name if provided, otherwise use clinical_indication
+            clinical_indication=request_data.clinical_indication,  # Use clinical_indication directly
             urgency=request_data.urgency
         )
         
