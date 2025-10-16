@@ -251,6 +251,103 @@ async def get_consultation_history(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching consultation history: {str(e)}")
 
+
+@router.get("/consultations/history/{patient_id}/print")
+async def print_consultation_history(
+    patient_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Generate PDF of complete consultation history for a patient."""
+    try:
+        # Get consultation history
+        history = await get_consultation_history(patient_id, current_user, db)
+        
+        # Get patient data
+        patient = await db.get(Patient, patient_id)
+        if not patient:
+            raise HTTPException(status_code=404, detail="Paciente não encontrado")
+        
+        # Generate HTML content for PDF
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Histórico Clínico - {patient.name}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
+                .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }}
+                .logo {{ font-size: 24px; font-weight: bold; color: #2563eb; }}
+                .patient-info {{ background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 30px; }}
+                .consultation {{ margin-bottom: 25px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; }}
+                .consultation-date {{ font-weight: bold; color: #2563eb; margin-bottom: 10px; }}
+                .consultation-summary {{ margin-top: 10px; }}
+                .footer {{ margin-top: 50px; text-align: center; font-size: 10px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="logo">Prontivus — Cuidado Inteligente</div>
+                <h1>Histórico Clínico</h1>
+            </div>
+            
+            <div class="patient-info">
+                <h2>Dados do Paciente</h2>
+                <p><strong>Nome:</strong> {patient.name}</p>
+                <p><strong>Data de Nascimento:</strong> {patient.birthdate or 'Não informado'}</p>
+                <p><strong>CPF:</strong> {patient.cpf or 'Não informado'}</p>
+                <p><strong>Cidade:</strong> {patient.city or 'Não informado'}</p>
+            </div>
+            
+            <div class="consultations">
+                <h2>Histórico de Consultas</h2>
+        """
+        
+        if not history:
+            html_content += "<p>Nenhuma consulta registrada.</p>"
+        else:
+            for item in history:
+                html_content += f"""
+                <div class="consultation">
+                    <div class="consultation-date">
+                        📅 {item.date.strftime('%d/%m/%Y às %H:%M')}
+                    </div>
+                    {f'<p><strong>Queixa Principal:</strong> {item.chief_complaint}</p>' if item.chief_complaint else ''}
+                    {f'<p><strong>Diagnóstico:</strong> {item.diagnosis}</p>' if item.diagnosis else ''}
+                    <div class="consultation-summary">
+                        <strong>Resumo:</strong> {item.summary}
+                    </div>
+                </div>
+                """
+        
+        html_content += """
+            </div>
+            
+            <div class="footer">
+                <p>Prontivus — Cuidado Inteligente</p>
+                <p>Documento gerado em: """ + datetime.now().strftime('%d/%m/%Y às %H:%M') + """</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Generate PDF
+        from weasyprint import HTML
+        html = HTML(string=html_content)
+        pdf_content = html.write_pdf()
+        
+        # Return PDF as response
+        from fastapi.responses import Response
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=historico_clinico_{patient.name.replace(' ', '_')}.pdf"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar histórico: {str(e)}")
+
 # ============================================================================
 # ATTACHMENTS ENDPOINTS
 # ============================================================================

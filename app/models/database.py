@@ -13,6 +13,9 @@ import uuid
 # Import exam database models
 from .exam_database import StandardExam, ExamCategory
 
+# Import print models
+from .print_models import PrintLog, PriceRule
+
 
 class ClinicBase(SQLModel):
     """Base clinic model."""
@@ -85,6 +88,7 @@ class PatientBase(SQLModel):
     gender: str = Field(default="unknown")
     cpf: Optional[str] = None
     address: Optional[Dict[str, Any]] = Field(default_factory=lambda: {}, sa_column=Column(JSON))
+    city: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     insurance_number: Optional[str] = None
@@ -114,6 +118,7 @@ class AppointmentBase(SQLModel):
     start_time: datetime
     end_time: datetime
     status: str = Field(default="scheduled")
+    price: Optional[float] = None
 
 
 class Appointment(AppointmentBase, table=True):

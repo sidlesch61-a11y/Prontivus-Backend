@@ -239,6 +239,19 @@ app.include_router(insurance_pricing.router, tags=["Insurance Pricing"])  # Auto
 # Import US medication API router
 from app.api.v1 import us_medication_api
 app.include_router(us_medication_api.router, tags=["US Medication API"])  # US pharmaceutical database integration
+
+# Import print API router
+from app.api.v1 import print_api
+app.include_router(print_api.router, prefix="/api/v1", tags=["Print"])  # Direct printing functionality
+
+# Import pricing API router
+from app.api.v1 import pricing_api
+app.include_router(pricing_api.router, prefix="/api/v1", tags=["Pricing"])  # Automatic pricing system
+
+# Import vitals API router
+from app.api.v1 import vitals_api
+app.include_router(vitals_api.router, prefix="/api/v1", tags=["Vitals"])  # Patient vitals with height field
+
 app.include_router(emergency_fix.router, prefix="/api/v1", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 
 # Static files for attachments
