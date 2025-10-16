@@ -13,7 +13,7 @@ import structlog
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions  # Complete consultation workflow + billing + extended features
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine  # Complete consultation workflow + billing + extended features + telemedicine
 
 
 # Configure logging
@@ -223,6 +223,7 @@ app.include_router(prescription_verification.router, prefix="/api/v1", tags=["Pu
 app.include_router(password_reset.router, prefix="/api/v1", tags=["Authentication"])
 app.include_router(reports_advanced.router, prefix="/api/v1", tags=["Reports"])
 app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time notifications
+app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
 app.include_router(emergency_fix.router, prefix="/api/v1", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 
 
