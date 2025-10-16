@@ -138,7 +138,7 @@ async def create_prescription_with_items(
         return {
             "message": "Prescription created successfully",
             "prescription_id": str(prescription.id),
-            "pdf_url": prescription.pdf_url
+            "pdf_url": None  # PDF generation not implemented yet
         }
         
     except Exception as e:
@@ -188,7 +188,8 @@ async def generate_prescription_pdf_endpoint(
         
         pdf_url = f"/prescriptions/{prescription_id}.pdf"  # Placeholder
         
-        prescription.pdf_url = pdf_url
+        # Note: Prescription model doesn't have pdf_url field
+        # prescription.pdf_url = pdf_url
         prescription.updated_at = datetime.now()
         await db.commit()
         
@@ -240,7 +241,7 @@ async def create_medical_certificate(
         return {
             "message": "Certificate created successfully",
             "certificate_id": str(certificate.id),
-            "pdf_url": certificate.pdf_url
+            "pdf_url": None  # PDF generation not implemented yet
         }
         
     except Exception as e:
@@ -283,7 +284,8 @@ async def generate_certificate_pdf_endpoint(
         # TODO: Generate PDF
         pdf_url = f"/certificates/{certificate_id}.pdf"  # Placeholder
         
-        certificate.pdf_url = pdf_url
+        # Note: MedicalCertificate model doesn't have pdf_url field
+        # certificate.pdf_url = pdf_url
         await db.commit()
         
         return {
@@ -335,7 +337,7 @@ async def create_exam_request(
         return {
             "message": "Exam request created successfully",
             "exam_request_id": str(exam_request.id),
-            "pdf_url": exam_request.pdf_url
+            "pdf_url": None  # PDF generation not implemented yet
         }
         
     except Exception as e:
@@ -378,7 +380,8 @@ async def generate_exam_request_pdf_endpoint(
         # TODO: Generate PDF
         pdf_url = f"/exam-requests/{exam_request_id}.pdf"  # Placeholder
         
-        exam_request.pdf_url = pdf_url
+        # Note: ExamRequest model doesn't have pdf_url field
+        # exam_request.pdf_url = pdf_url
         await db.commit()
         
         return {
@@ -429,7 +432,7 @@ async def create_referral(
         return {
             "message": "Referral created successfully",
             "referral_id": str(referral.id),
-            "pdf_url": referral.pdf_url
+            "pdf_url": None  # PDF generation not implemented yet
         }
         
     except Exception as e:
@@ -472,7 +475,8 @@ async def generate_referral_pdf_endpoint(
         # TODO: Generate PDF
         pdf_url = f"/referrals/{referral_id}.pdf"  # Placeholder
         
-        referral.pdf_url = pdf_url
+        # Note: Referral model doesn't have pdf_url field
+        # referral.pdf_url = pdf_url
         await db.commit()
         
         return {
