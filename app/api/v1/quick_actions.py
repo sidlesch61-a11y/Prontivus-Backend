@@ -101,12 +101,17 @@ async def create_prescription_with_items(
         if not items:
             raise HTTPException(status_code=400, detail="At least one medication item is required")
         
-        # Create prescription
+        # Use first item to satisfy legacy NOT NULL columns on prescriptions table
+        first_item = items[0]
         prescription = Prescription(
             consultation_id=consultation_id,
             patient_id=patient_id,
             doctor_id=current_user.id,
             clinic_id=current_user.clinic_id,
+            medication_name=first_item.get("medication_name") or first_item.get("name") or "MEDICAMENTO",
+            dosage=first_item.get("dosage"),
+            frequency=first_item.get("frequency"),
+            duration=first_item.get("duration"),
             notes=notes,
             status="active"
         )
