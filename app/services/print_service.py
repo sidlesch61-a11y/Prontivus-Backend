@@ -8,8 +8,17 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
+
+# Conditional import for weasyprint
+try:
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
+    HTML = None
+    CSS = None
+    FontConfiguration = None
 
 from app.models.print_models import PrintLog, PrintRequest, PrintResponse
 from app.models.database import Consultation, Patient, User, Clinic
@@ -20,6 +29,8 @@ class PrintService:
     """Service for handling document printing."""
     
     def __init__(self):
+        if not WEASYPRINT_AVAILABLE:
+            raise ImportError("weasyprint is not available. Please install it with: pip install weasyprint")
         self.font_config = FontConfiguration()
         self.temp_dir = "temp_prints"
         os.makedirs(self.temp_dir, exist_ok=True)

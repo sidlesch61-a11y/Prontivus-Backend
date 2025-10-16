@@ -4,7 +4,7 @@ Patient vitals model with height field.
 
 from datetime import datetime
 from typing import Optional
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 import uuid
 
 
@@ -33,8 +33,8 @@ class PatientVitals(PatientVitalsBase, table=True):
     updated_at: datetime = Field(default_factory=datetime.now)
     
     # Relationships
-    patient: Optional["Patient"] = Relationship(foreign_keys=[patient_id])
-    consultation: Optional["Consultation"] = Relationship(foreign_keys=[consultation_id])
+    patient: Optional["Patient"] = Relationship(back_populates="vitals")
+    consultation: Optional["Consultation"] = Relationship(back_populates="vitals")
 
 
 class VitalsCreate(PatientVitalsBase):

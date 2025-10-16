@@ -7,8 +7,8 @@ from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
-from app.core.database import get_db_session
-from app.models.user import User
+from app.db.session import get_db_session
+from app.models.database import User
 from app.api.v1.auth import get_current_user
 from app.models.print_models import PriceRule, PriceRuleBase
 from app.models.database import Patient, Appointment

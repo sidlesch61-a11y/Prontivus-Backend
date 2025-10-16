@@ -9,12 +9,19 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
-from app.core.database import get_db_session
-from app.models.user import User
+from app.db.session import get_db_session
+from app.models.database import User
 from app.api.v1.auth import get_current_user
 from app.models.print_models import PrintRequest, PrintResponse, PrintLog
 from app.models.database import Consultation
-from app.services.print_service import print_service
+
+# Conditional import for print service
+try:
+    from app.services.print_service import print_service
+    PRINT_SERVICE_AVAILABLE = True
+except ImportError:
+    PRINT_SERVICE_AVAILABLE = False
+    print_service = None
 
 router = APIRouter()
 
@@ -44,6 +51,12 @@ async def print_document(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Tipo de documento inválido. Tipos válidos: {', '.join(valid_types)}"
+        )
+    
+    if not PRINT_SERVICE_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de impressão não disponível. weasyprint não está instalado."
         )
     
     try:

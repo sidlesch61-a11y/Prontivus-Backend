@@ -27,8 +27,8 @@ class PrintLog(PrintLogBase, table=True):
     printed_at: datetime = Field(default_factory=datetime.now)
     
     # Relationships
-    consultation: Optional["Consultation"] = Relationship(foreign_keys=[consultation_id])
-    printer: Optional["User"] = Relationship(foreign_keys=[printed_by])
+    consultation: Optional["Consultation"] = Relationship(back_populates="print_logs")
+    printer: Optional["User"] = Relationship()
 
 
 class PriceRuleBase(SQLModel):
