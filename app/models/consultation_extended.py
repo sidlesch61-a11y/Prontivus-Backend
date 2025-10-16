@@ -3,7 +3,7 @@ Extended consultation models for vitals, attachments, and queue management.
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import JSON, String as SQLString, Text
 import uuid
@@ -232,6 +232,20 @@ class VitalsResponse(VitalsBase):
     patient_id: uuid.UUID
     recorded_by: uuid.UUID
     recorded_at: datetime
+
+
+class VitalsUpsert(SQLModel):
+    """Relaxed request schema for creating/updating vitals that tolerates string inputs."""
+    consultation_id: uuid.UUID
+    patient_id: uuid.UUID
+    blood_pressure: Optional[str] = None
+    heart_rate: Optional[Union[int, str]] = None
+    temperature: Optional[Union[float, str]] = None
+    weight: Optional[Union[float, str]] = None
+    height: Optional[Union[float, str]] = None
+    respiratory_rate: Optional[Union[int, str]] = None
+    oxygen_saturation: Optional[Union[int, str]] = None
+    notes: Optional[str] = None
 
 
 class AttachmentCreate(AttachmentBase):

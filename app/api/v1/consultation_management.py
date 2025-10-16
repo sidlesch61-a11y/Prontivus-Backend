@@ -14,7 +14,7 @@ import aiofiles
 from app.db.session import get_db_session
 from app.core.auth import get_current_user
 from app.models.consultation_extended import (
-    Vitals, VitalsCreate, VitalsResponse,
+    Vitals, VitalsCreate, VitalsResponse, VitalsUpsert,
     Attachment, AttachmentCreate, AttachmentResponse,
     QueueStatus, QueueStatusResponse,
     ConsultationNotes, ConsultationNotesUpdate,
@@ -58,7 +58,7 @@ def _coerce_vitals_payload(payload: dict) -> dict:
 
 @router.post("/vitals", response_model=VitalsResponse)
 async def create_vitals(
-    vitals_data: VitalsCreate,
+    vitals_data: VitalsUpsert,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
@@ -135,7 +135,7 @@ async def get_vitals(
 @router.put("/vitals/{consultation_id}", response_model=VitalsResponse)
 async def update_vitals(
     consultation_id: uuid.UUID,
-    vitals_data: VitalsCreate,
+    vitals_data: VitalsUpsert,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
