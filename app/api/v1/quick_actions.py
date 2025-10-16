@@ -43,7 +43,7 @@ class CertificateCreateRequest(BaseModel):
     patient_id: str
     certificate_type: str
     content: str
-    days_off: Optional[str] = None
+    days_off: Optional[int] = None  # Changed from str to int to match database model
     cid10_code: Optional[str] = None
     
     class Config:
