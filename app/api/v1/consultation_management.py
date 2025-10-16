@@ -103,6 +103,50 @@ async def get_vitals(
     return vitals
 
 
+@router.put("/vitals/{consultation_id}", response_model=VitalsResponse)
+async def update_vitals(
+    consultation_id: uuid.UUID,
+    vitals_data: VitalsCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Update vitals for a consultation; creates if it does not exist (idempotent)."""
+    try:
+        # Find existing vitals by consultation_id
+        stmt = select(Vitals).where(Vitals.consultation_id == consultation_id)
+        result = await db.execute(stmt)
+        existing_vitals = result.scalar_one_or_none()
+
+        if existing_vitals:
+            # Update allowed fields
+            payload = vitals_data.dict(exclude_unset=True)
+            for key, value in payload.items():
+                if key not in ["consultation_id", "patient_id"]:
+                    setattr(existing_vitals, key, value)
+            existing_vitals.updated_at = datetime.now()
+            existing_vitals.recorded_by = current_user.id
+            existing_vitals.recorded_at = datetime.now()
+            await db.commit()
+            await db.refresh(existing_vitals)
+            return existing_vitals
+
+        # Create new vitals if none exist
+        create_payload = vitals_data.dict()
+        create_payload["consultation_id"] = consultation_id
+        new_vitals = Vitals(
+            **create_payload,
+            recorded_by=current_user.id,
+            recorded_at=datetime.now(),
+        )
+        db.add(new_vitals)
+        await db.commit()
+        await db.refresh(new_vitals)
+        return new_vitals
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating vitals: {str(e)}")
+
 # ============================================================================
 # ATTACHMENTS ENDPOINTS
 # ============================================================================
