@@ -282,17 +282,121 @@ async def generate_certificate_pdf_endpoint(
         if not certificate:
             raise HTTPException(status_code=404, detail="Certificate not found")
         
-        # TODO: Generate PDF
-        pdf_url = f"/certificates/{certificate_id}.pdf"  # Placeholder
+        # Get related data
+        from app.models.database import Patient, User, Clinic
         
-        # Note: MedicalCertificate model doesn't have pdf_url field
-        # certificate.pdf_url = pdf_url
-        await db.commit()
+        patient_stmt = select(Patient).where(Patient.id == certificate.patient_id)
+        patient_result = await db.execute(patient_stmt)
+        patient = patient_result.scalar_one_or_none()
         
-        return {
-            "message": "PDF generated successfully",
-            "pdf_url": pdf_url
-        }
+        doctor_stmt = select(User).where(User.id == certificate.doctor_id)
+        doctor_result = await db.execute(doctor_stmt)
+        doctor = doctor_result.scalar_one_or_none()
+        
+        clinic_stmt = select(Clinic).where(Clinic.id == certificate.clinic_id)
+        clinic_result = await db.execute(clinic_stmt)
+        clinic = clinic_result.scalar_one_or_none()
+        
+        if not all([patient, doctor, clinic]):
+            raise HTTPException(status_code=500, detail="Missing related data")
+        
+        # Generate PDF content
+        from fastapi.responses import Response
+        from datetime import datetime
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Atestado Médico - {patient.name}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
+                .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }}
+                .clinic-name {{ font-size: 18px; font-weight: bold; margin-bottom: 5px; }}
+                .clinic-info {{ font-size: 12px; color: #666; }}
+                .certificate-title {{ font-size: 16px; font-weight: bold; text-align: center; margin: 30px 0; }}
+                .content {{ margin: 20px 0; text-align: justify; }}
+                .patient-info {{ margin: 15px 0; }}
+                .signature-area {{ margin-top: 50px; text-align: center; }}
+                .signature-line {{ border-top: 1px solid #333; width: 300px; margin: 20px auto; }}
+                .footer {{ margin-top: 30px; font-size: 10px; text-align: center; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="clinic-name">{clinic.name}</div>
+                <div class="clinic-info">
+                    {clinic.address}<br>
+                    {clinic.phone} | {clinic.email}
+                </div>
+            </div>
+            
+            <div class="certificate-title">ATESTADO MÉDICO</div>
+            
+            <div class="content">
+                <div class="patient-info">
+                    <strong>Paciente:</strong> {patient.name}<br>
+                    <strong>Data de Nascimento:</strong> {patient.date_of_birth.strftime('%d/%m/%Y') if patient.date_of_birth else 'Não informado'}<br>
+                    <strong>CPF:</strong> {patient.cpf or 'Não informado'}
+                </div>
+                
+                <p>Atesto para os devidos fins que o(a) paciente acima identificado(a) necessita de {certificate.days_off or '0'} dias de afastamento de suas atividades, devido a:</p>
+                
+                <p style="margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #007bff;">
+                    {certificate.content}
+                </p>
+                
+                {f'<p><strong>CID-10:</strong> {certificate.cid10_code}</p>' if certificate.cid10_code else ''}
+                
+                <p>Este atestado é válido por 30 dias a partir da data de emissão.</p>
+            </div>
+            
+            <div class="signature-area">
+                <p>Data: {datetime.now().strftime('%d/%m/%Y')}</p>
+                <div class="signature-line"></div>
+                <p><strong>Dr(a). {doctor.full_name or doctor.name}</strong><br>
+                CRM: {doctor.license_number or 'N/A'}<br>
+                {clinic.name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>Este documento foi gerado eletronicamente e possui validade legal conforme legislação vigente.</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Convert HTML to PDF using weasyprint
+        try:
+            from weasyprint import HTML, CSS
+            from weasyprint.text.fonts import FontConfiguration
+            
+            font_config = FontConfiguration()
+            html_doc = HTML(string=html_content)
+            css_doc = CSS(string="""
+                @page { size: A4; margin: 2cm; }
+                body { font-family: 'Times New Roman', serif; }
+            """, font_config=font_config)
+            
+            pdf_bytes = html_doc.write_pdf(stylesheets=[css_doc])
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=atestado_{certificate_id}.pdf"
+                }
+            )
+            
+        except ImportError:
+            # Fallback: return HTML content if weasyprint is not available
+            return Response(
+                content=html_content,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"attachment; filename=atestado_{certificate_id}.html"
+                }
+            )
         
     except Exception as e:
         await db.rollback()
@@ -378,17 +482,144 @@ async def generate_exam_request_pdf_endpoint(
         if not exam_request:
             raise HTTPException(status_code=404, detail="Exam request not found")
         
-        # TODO: Generate PDF
-        pdf_url = f"/exam-requests/{exam_request_id}.pdf"  # Placeholder
+        # Get related data
+        from app.models.database import Patient, User, Clinic
         
-        # Note: ExamRequest model doesn't have pdf_url field
-        # exam_request.pdf_url = pdf_url
-        await db.commit()
+        patient_stmt = select(Patient).where(Patient.id == exam_request.patient_id)
+        patient_result = await db.execute(patient_stmt)
+        patient = patient_result.scalar_one_or_none()
         
-        return {
-            "message": "PDF generated successfully",
-            "pdf_url": pdf_url
+        doctor_stmt = select(User).where(User.id == exam_request.doctor_id)
+        doctor_result = await db.execute(doctor_stmt)
+        doctor = doctor_result.scalar_one_or_none()
+        
+        clinic_stmt = select(Clinic).where(Clinic.id == exam_request.clinic_id)
+        clinic_result = await db.execute(clinic_stmt)
+        clinic = clinic_result.scalar_one_or_none()
+        
+        if not all([patient, doctor, clinic]):
+            raise HTTPException(status_code=500, detail="Missing related data")
+        
+        # Generate PDF content
+        from fastapi.responses import Response
+        from datetime import datetime
+        
+        urgency_colors = {
+            "urgent": "#dc3545",
+            "normal": "#28a745", 
+            "low": "#ffc107"
         }
+        
+        urgency_labels = {
+            "urgent": "URGENTE",
+            "normal": "NORMAL",
+            "low": "BAIXA"
+        }
+        
+        urgency_color = urgency_colors.get(exam_request.urgency, "#28a745")
+        urgency_label = urgency_labels.get(exam_request.urgency, "NORMAL")
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Solicitação de Exame - {patient.name}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
+                .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }}
+                .clinic-name {{ font-size: 18px; font-weight: bold; margin-bottom: 5px; }}
+                .clinic-info {{ font-size: 12px; color: #666; }}
+                .exam-title {{ font-size: 16px; font-weight: bold; text-align: center; margin: 30px 0; }}
+                .content {{ margin: 20px 0; text-align: justify; }}
+                .patient-info {{ margin: 15px 0; }}
+                .exam-details {{ margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid {urgency_color}; }}
+                .urgency-badge {{ display: inline-block; padding: 4px 8px; background-color: {urgency_color}; color: white; border-radius: 4px; font-size: 12px; font-weight: bold; }}
+                .signature-area {{ margin-top: 50px; text-align: center; }}
+                .signature-line {{ border-top: 1px solid #333; width: 300px; margin: 20px auto; }}
+                .footer {{ margin-top: 30px; font-size: 10px; text-align: center; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="clinic-name">{clinic.name}</div>
+                <div class="clinic-info">
+                    {clinic.address}<br>
+                    {clinic.phone} | {clinic.email}
+                </div>
+            </div>
+            
+            <div class="exam-title">SOLICITAÇÃO DE EXAME MÉDICO</div>
+            
+            <div class="content">
+                <div class="patient-info">
+                    <strong>Paciente:</strong> {patient.name}<br>
+                    <strong>Data de Nascimento:</strong> {patient.date_of_birth.strftime('%d/%m/%Y') if patient.date_of_birth else 'Não informado'}<br>
+                    <strong>CPF:</strong> {patient.cpf or 'Não informado'}<br>
+                    <strong>Convênio:</strong> {patient.insurance_provider or 'Particular'}
+                </div>
+                
+                <div class="exam-details">
+                    <h3>Detalhes do Exame</h3>
+                    <p><strong>Tipo de Exame:</strong> {exam_request.exam_type}</p>
+                    {f'<p><strong>Nome do Exame:</strong> {exam_request.exam_name}</p>' if exam_request.exam_name else ''}
+                    <p><strong>Urgência:</strong> <span class="urgency-badge">{urgency_label}</span></p>
+                    <p><strong>Indicação Clínica:</strong></p>
+                    <p style="margin: 10px 0; padding: 10px; background-color: white; border-radius: 4px;">
+                        {exam_request.clinical_indication}
+                    </p>
+                    {f'<p><strong>Instruções Especiais:</strong><br>{exam_request.instructions}</p>' if exam_request.instructions else ''}
+                </div>
+                
+                <p><strong>Data da Solicitação:</strong> {datetime.now().strftime('%d/%m/%Y às %H:%M')}</p>
+            </div>
+            
+            <div class="signature-area">
+                <p>Data: {datetime.now().strftime('%d/%m/%Y')}</p>
+                <div class="signature-line"></div>
+                <p><strong>Dr(a). {doctor.full_name or doctor.name}</strong><br>
+                CRM: {doctor.license_number or 'N/A'}<br>
+                {clinic.name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>Este documento foi gerado eletronicamente e possui validade legal conforme legislação vigente.</p>
+                <p>Validade: 30 dias a partir da data de emissão</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Convert HTML to PDF using weasyprint
+        try:
+            from weasyprint import HTML, CSS
+            from weasyprint.text.fonts import FontConfiguration
+            
+            font_config = FontConfiguration()
+            html_doc = HTML(string=html_content)
+            css_doc = CSS(string="""
+                @page { size: A4; margin: 2cm; }
+                body { font-family: 'Times New Roman', serif; }
+            """, font_config=font_config)
+            
+            pdf_bytes = html_doc.write_pdf(stylesheets=[css_doc])
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=solicitacao_exame_{exam_request_id}.pdf"
+                }
+            )
+            
+        except ImportError:
+            # Fallback: return HTML content if weasyprint is not available
+            return Response(
+                content=html_content,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"attachment; filename=solicitacao_exame_{exam_request_id}.html"
+                }
+            )
         
     except Exception as e:
         await db.rollback()
@@ -473,17 +704,153 @@ async def generate_referral_pdf_endpoint(
         if not referral:
             raise HTTPException(status_code=404, detail="Referral not found")
         
-        # TODO: Generate PDF
-        pdf_url = f"/referrals/{referral_id}.pdf"  # Placeholder
+        # Get related data
+        from app.models.database import Patient, User, Clinic
         
-        # Note: Referral model doesn't have pdf_url field
-        # referral.pdf_url = pdf_url
-        await db.commit()
+        patient_stmt = select(Patient).where(Patient.id == referral.patient_id)
+        patient_result = await db.execute(patient_stmt)
+        patient = patient_result.scalar_one_or_none()
         
-        return {
-            "message": "PDF generated successfully",
-            "pdf_url": pdf_url
+        doctor_stmt = select(User).where(User.id == referral.doctor_id)
+        doctor_result = await db.execute(doctor_stmt)
+        doctor = doctor_result.scalar_one_or_none()
+        
+        clinic_stmt = select(Clinic).where(Clinic.id == referral.clinic_id)
+        clinic_result = await db.execute(clinic_stmt)
+        clinic = clinic_result.scalar_one_or_none()
+        
+        if not all([patient, doctor, clinic]):
+            raise HTTPException(status_code=500, detail="Missing related data")
+        
+        # Generate PDF content
+        from fastapi.responses import Response
+        from datetime import datetime
+        
+        urgency_colors = {
+            "urgent": "#dc3545",
+            "normal": "#28a745", 
+            "low": "#ffc107"
         }
+        
+        urgency_labels = {
+            "urgent": "URGENTE",
+            "normal": "NORMAL",
+            "low": "BAIXA"
+        }
+        
+        urgency_color = urgency_colors.get(referral.urgency, "#28a745")
+        urgency_label = urgency_labels.get(referral.urgency, "NORMAL")
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Encaminhamento Médico - {patient.name}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }}
+                .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }}
+                .clinic-name {{ font-size: 18px; font-weight: bold; margin-bottom: 5px; }}
+                .clinic-info {{ font-size: 12px; color: #666; }}
+                .referral-title {{ font-size: 16px; font-weight: bold; text-align: center; margin: 30px 0; }}
+                .content {{ margin: 20px 0; text-align: justify; }}
+                .patient-info {{ margin: 15px 0; }}
+                .referral-details {{ margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid {urgency_color}; }}
+                .urgency-badge {{ display: inline-block; padding: 4px 8px; background-color: {urgency_color}; color: white; border-radius: 4px; font-size: 12px; font-weight: bold; }}
+                .signature-area {{ margin-top: 50px; text-align: center; }}
+                .signature-line {{ border-top: 1px solid #333; width: 300px; margin: 20px auto; }}
+                .footer {{ margin-top: 30px; font-size: 10px; text-align: center; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="clinic-name">{clinic.name}</div>
+                <div class="clinic-info">
+                    {clinic.address}<br>
+                    {clinic.phone} | {clinic.email}
+                </div>
+            </div>
+            
+            <div class="referral-title">ENCAMINHAMENTO MÉDICO</div>
+            
+            <div class="content">
+                <div class="patient-info">
+                    <strong>Paciente:</strong> {patient.name}<br>
+                    <strong>Data de Nascimento:</strong> {patient.date_of_birth.strftime('%d/%m/%Y') if patient.date_of_birth else 'Não informado'}<br>
+                    <strong>CPF:</strong> {patient.cpf or 'Não informado'}<br>
+                    <strong>Convênio:</strong> {patient.insurance_provider or 'Particular'}
+                </div>
+                
+                <div class="referral-details">
+                    <h3>Detalhes do Encaminhamento</h3>
+                    <p><strong>Especialidade:</strong> {referral.specialty}</p>
+                    <p><strong>Urgência:</strong> <span class="urgency-badge">{urgency_label}</span></p>
+                    <p><strong>Motivo do Encaminhamento:</strong></p>
+                    <p style="margin: 10px 0; padding: 10px; background-color: white; border-radius: 4px;">
+                        {referral.reason}
+                    </p>
+                    {f'<p><strong>Observações Adicionais:</strong><br>{referral.notes}</p>' if referral.notes else ''}
+                </div>
+                
+                <p><strong>Data do Encaminhamento:</strong> {datetime.now().strftime('%d/%m/%Y às %H:%M')}</p>
+                
+                <div style="margin: 30px 0; padding: 15px; background-color: #e3f2fd; border-radius: 4px;">
+                    <h4>Instruções para o Paciente:</h4>
+                    <ul>
+                        <li>Apresente este encaminhamento na especialidade indicada</li>
+                        <li>Leve todos os exames e documentos relacionados ao caso</li>
+                        <li>Este encaminhamento é válido por 30 dias</li>
+                        <li>Em caso de urgência, procure atendimento imediato</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="signature-area">
+                <p>Data: {datetime.now().strftime('%d/%m/%Y')}</p>
+                <div class="signature-line"></div>
+                <p><strong>Dr(a). {doctor.full_name or doctor.name}</strong><br>
+                CRM: {doctor.license_number or 'N/A'}<br>
+                {clinic.name}</p>
+            </div>
+            
+            <div class="footer">
+                <p>Este documento foi gerado eletronicamente e possui validade legal conforme legislação vigente.</p>
+                <p>Validade: 30 dias a partir da data de emissão</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Convert HTML to PDF using weasyprint
+        try:
+            from weasyprint import HTML, CSS
+            from weasyprint.text.fonts import FontConfiguration
+            
+            font_config = FontConfiguration()
+            html_doc = HTML(string=html_content)
+            css_doc = CSS(string="""
+                @page { size: A4; margin: 2cm; }
+                body { font-family: 'Times New Roman', serif; }
+            """, font_config=font_config)
+            
+            pdf_bytes = html_doc.write_pdf(stylesheets=[css_doc])
+            
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=encaminhamento_{referral_id}.pdf"
+                }
+            )
+            
+        except ImportError:
+            # Fallback: return HTML content if weasyprint is not available
+            return Response(
+                content=html_content,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"attachment; filename=encaminhamento_{referral_id}.html"
+                }
+            )
         
     except Exception as e:
         await db.rollback()
