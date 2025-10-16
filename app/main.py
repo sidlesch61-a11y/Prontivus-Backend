@@ -8,7 +8,9 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import structlog
+import os
 
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
@@ -227,6 +229,10 @@ app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-t
 app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
 app.include_router(emergency_fix.router, prefix="/api/v1", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 
+# Static files for attachments
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads/attachments")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Root endpoint
 @app.get("/")

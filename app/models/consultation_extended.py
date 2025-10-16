@@ -274,6 +274,7 @@ class QueueStatusResponse(QueueStatusBase):
     patient_name: Optional[str] = None
     patient_age: Optional[int] = None
     appointment_time: Optional[datetime] = None
+    insurance_provider: Optional[str] = None
     called_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

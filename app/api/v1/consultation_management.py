@@ -270,13 +270,17 @@ async def upload_attachment(
             await out_file.write(content)
         
         # Create attachment record
+        # Use absolute URL for frontend access
+        base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        file_url = f"{base_url}/uploads/attachments/{unique_filename}"
+        
         attachment = Attachment(
             consultation_id=uuid.UUID(consultation_id),
             patient_id=uuid.UUID(patient_id),
             file_name=file.filename,
             file_type=file.content_type,
             file_size=len(content),
-            file_url=f"/uploads/attachments/{unique_filename}",
+            file_url=file_url,
             description=description,
             category=category,
             uploaded_by=current_user.id
@@ -427,6 +431,7 @@ async def get_queue(
                 patient_name=patient.name,
                 patient_age=calculate_age(patient.birthdate) if patient.birthdate else None,
                 appointment_time=appointment.start_time,
+                insurance_provider=patient.insurance_provider,
                 called_at=queue_status.called_at,
                 started_at=queue_status.started_at,
                 completed_at=queue_status.completed_at
