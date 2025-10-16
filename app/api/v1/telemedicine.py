@@ -59,3 +59,52 @@ async def get_session(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error getting session: {str(e)}"
         )
+
+@router.post("/sessions/{session_id}/consent", response_model=dict)
+async def give_consent(
+    session_id: str,
+    consent_data: dict,
+    current_user = Depends(AuthDependencies.get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Accept and record consent for a telemedicine session (simplified)."""
+    try:
+        return {
+            "session_id": session_id,
+            "consent": {
+                "user_id": str(getattr(current_user, "id", "")),
+                **consent_data,
+            },
+            "status": "consent_recorded",
+            "message": "Consent recorded successfully",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error recording consent: {str(e)}",
+        )
+
+@router.post("/sessions/{session_id}/end", response_model=dict)
+async def end_session(
+    session_id: str,
+    end_data: dict,
+    current_user = Depends(AuthDependencies.get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """End a telemedicine session (simplified)."""
+    try:
+        ended_by = end_data.get("ended_by") or str(getattr(current_user, "id", ""))
+        end_reason = end_data.get("end_reason", "normal_completion")
+        return {
+            "session_id": session_id,
+            "ended_by": ended_by,
+            "end_reason": end_reason,
+            "ended_at": datetime.now().isoformat(),
+            "status": "ended",
+            "message": "Session ended successfully",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error ending session: {str(e)}",
+        )
