@@ -13,7 +13,7 @@ import structlog
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine  # Complete consultation workflow + billing + extended features + telemedicine
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine  # Complete consultation workflow + billing + extended features + telemedicine
 
 
 # Configure logging
@@ -212,7 +212,8 @@ app.include_router(licenses.router, prefix="/api/v1/licenses", tags=["Licenses"]
 app.include_router(sync.router, prefix="/api/v1/sync", tags=["Sync"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
 app.include_router(reports.router, prefix="/api/v1", tags=["Reports"])
-# app.include_router(tiss.router, tags=["TISS"])  # advanced TISS - temporarily disabled
+# Enable advanced TISS endpoints (includes /api/v1/tiss/generate)
+app.include_router(tiss.router, tags=["TISS"])  # advanced TISS
 app.include_router(tiss_basic.router, tags=["TISS"])  # basic CRUD used by UI
 app.include_router(cid10.router, prefix="/api/v1", tags=["CID-10"])
 app.include_router(medical_records_lock.router, prefix="/api/v1", tags=["Medical Records"])
