@@ -10,6 +10,9 @@ from sqlalchemy import JSON, String as SQLString
 from pydantic import EmailStr
 import uuid
 
+# Import exam database models
+from .exam_database import StandardExam, ExamCategory
+
 
 class ClinicBase(SQLModel):
     """Base clinic model."""

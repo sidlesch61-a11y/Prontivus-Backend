@@ -337,7 +337,8 @@ async def generate_certificate_pdf_endpoint(
                 <div class="patient-info">
                     <strong>Paciente:</strong> {patient.name}<br>
                     <strong>Data de Nascimento:</strong> {patient.date_of_birth.strftime('%d/%m/%Y') if patient.date_of_birth else 'Não informado'}<br>
-                    <strong>CPF:</strong> {patient.cpf or 'Não informado'}
+                    <strong>CPF:</strong> {patient.cpf or 'Não informado'}<br>
+                    <strong>Cidade:</strong> {patient.city or 'Não informado'}
                 </div>
                 
                 <p>Atesto para os devidos fins que o(a) paciente acima identificado(a) necessita de {certificate.days_off or '0'} dias de afastamento de suas atividades, devido a:</p>
@@ -555,6 +556,7 @@ async def generate_exam_request_pdf_endpoint(
                     <strong>Paciente:</strong> {patient.name}<br>
                     <strong>Data de Nascimento:</strong> {patient.date_of_birth.strftime('%d/%m/%Y') if patient.date_of_birth else 'Não informado'}<br>
                     <strong>CPF:</strong> {patient.cpf or 'Não informado'}<br>
+                    <strong>Cidade:</strong> {patient.city or 'Não informado'}<br>
                     <strong>Convênio:</strong> {patient.insurance_provider or 'Particular'}
                 </div>
                 
@@ -777,6 +779,7 @@ async def generate_referral_pdf_endpoint(
                     <strong>Paciente:</strong> {patient.name}<br>
                     <strong>Data de Nascimento:</strong> {patient.date_of_birth.strftime('%d/%m/%Y') if patient.date_of_birth else 'Não informado'}<br>
                     <strong>CPF:</strong> {patient.cpf or 'Não informado'}<br>
+                    <strong>Cidade:</strong> {patient.city or 'Não informado'}<br>
                     <strong>Convênio:</strong> {patient.insurance_provider or 'Particular'}
                 </div>
                 

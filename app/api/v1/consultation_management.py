@@ -215,19 +215,36 @@ async def get_consultation_history(
 
         history: List[ConsultationHistoryItem] = []
         for consultation, notes in rows:
+            # Build summary from available data
             summary_parts: List[str] = []
-            if getattr(notes, "anamnese", None):
-                summary_parts.append(notes.anamnese[:160])
-            if getattr(notes, "diagnosis", None):
+            
+            # Add chief complaint if available
+            if hasattr(consultation, 'chief_complaint') and consultation.chief_complaint:
+                summary_parts.append(f"Queixa: {consultation.chief_complaint[:100]}")
+            
+            # Add anamnese if available
+            if notes and hasattr(notes, 'anamnese') and notes.anamnese:
+                summary_parts.append(f"Anamnese: {notes.anamnese[:100]}")
+            
+            # Add diagnosis if available
+            if notes and hasattr(notes, 'diagnosis') and notes.diagnosis:
                 summary_parts.append(f"Dx: {notes.diagnosis[:100]}")
+            
+            # Add evolution if available
+            if notes and hasattr(notes, 'evolucao') and notes.evolucao:
+                summary_parts.append(f"Evolução: {notes.evolucao[:100]}")
+            
+            # Create summary
+            summary = " — ".join(summary_parts) if summary_parts else "Consulta sem detalhes registrados"
+            
             history.append(ConsultationHistoryItem(
-                id=consultation.id,
-                appointment_id=getattr(consultation, "appointment_id", None),
-                doctor_id=getattr(consultation, "doctor_id", None),
-                date=getattr(consultation, "created_at", datetime.now()),
-                chief_complaint=getattr(notes, "anamnese", None),
-                diagnosis=getattr(notes, "diagnosis", None),
-                summary=" — ".join(summary_parts) if summary_parts else None,
+                id=str(consultation.id),
+                appointment_id=str(consultation.appointment_id) if hasattr(consultation, 'appointment_id') and consultation.appointment_id else None,
+                doctor_id=str(consultation.doctor_id) if hasattr(consultation, 'doctor_id') and consultation.doctor_id else None,
+                date=consultation.created_at if hasattr(consultation, 'created_at') else datetime.now(),
+                chief_complaint=consultation.chief_complaint if hasattr(consultation, 'chief_complaint') else None,
+                diagnosis=notes.diagnosis if notes and hasattr(notes, 'diagnosis') else None,
+                summary=summary,
             ))
 
         return history

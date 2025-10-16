@@ -227,6 +227,18 @@ app.include_router(password_reset.router, prefix="/api/v1", tags=["Authenticatio
 app.include_router(reports_advanced.router, prefix="/api/v1", tags=["Reports"])
 app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time notifications
 app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
+
+# Import exam database router
+from app.api.v1 import exam_database
+app.include_router(exam_database.router, tags=["Exam Database"])  # Standardized exam database
+
+# Import insurance pricing router
+from app.api.v1 import insurance_pricing
+app.include_router(insurance_pricing.router, tags=["Insurance Pricing"])  # Automatic pricing by insurance
+
+# Import US medication API router
+from app.api.v1 import us_medication_api
+app.include_router(us_medication_api.router, tags=["US Medication API"])  # US pharmaceutical database integration
 app.include_router(emergency_fix.router, prefix="/api/v1", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 
 # Static files for attachments
