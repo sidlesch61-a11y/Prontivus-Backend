@@ -18,7 +18,7 @@ from app.models.insurance_pricing import InsuranceProvider, ServicePricing, Pric
 from app.core.config import settings
 
 # Database URL
-DATABASE_URL = settings.DATABASE_URL
+DATABASE_URL = settings.database_url
 
 async def populate_insurance_pricing():
     """Populate insurance pricing data"""

@@ -18,7 +18,7 @@ from app.models.exam_database import StandardExam, ExamCategory
 from app.core.config import settings
 
 # Database URL
-DATABASE_URL = settings.DATABASE_URL
+DATABASE_URL = settings.database_url
 
 async def populate_exam_database():
     """Populate the exam database with standard exams"""
