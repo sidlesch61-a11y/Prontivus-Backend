@@ -77,11 +77,11 @@ class TelemedSession(SQLModel, table=True):
     recording_encryption_key: Optional[str] = Field(default=None, description="Encryption key for recording")
     
     # SFU configuration
-    sfu_config: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
-    turn_credentials: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
+    sfu_config: Optional[str] = Field(default=None)
+    turn_credentials: Optional[str] = Field(default=None)
     
     # Session metadata
-    session_meta: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
+    session_meta: Optional[str] = Field(default=None)
     error_message: Optional[str] = Field(default=None, description="Error message if session failed")
     
     # Timestamps
@@ -110,7 +110,7 @@ class TelemedSessionLog(SQLModel, table=True):
     user_role: Optional[TelemedUserRole] = Field(default=None, description="Role of user who triggered event")
     
     # Event metadata
-    meta: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
+    meta: Optional[str] = Field(default=None)
     message: Optional[str] = Field(default=None, description="Event message")
     
     # Technical details
@@ -155,7 +155,7 @@ class TelemedRecording(SQLModel, table=True):
     storage_key: str = Field(description="Storage key")
     
     # Metadata
-    recording_meta: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
+    recording_meta: Optional[str] = Field(default=None)
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -199,8 +199,8 @@ class TelemedSessionResponse(SQLModel):
     recording_file_path: Optional[str] = None
     recording_file_size: Optional[int] = None
     recording_duration_seconds: Optional[int] = None
-    sfu_config: Optional[Dict[str, Any]] = None
-    session_meta: Optional[Dict[str, Any]] = None
+    sfu_config: Optional[dict] = None
+    session_meta: Optional[dict] = None
     error_message: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -215,9 +215,9 @@ class TelemedJoinResponse(SQLModel):
     session_id: str = Field(description="SFU session ID")
     room_id: str = Field(description="SFU room ID")
     sfu_endpoint: str = Field(description="SFU endpoint URL")
-    turn_credentials: Dict[str, Any] = Field(description="TURN server credentials")
-    ice_servers: List[Dict[str, Any]] = Field(description="ICE servers configuration")
-    session_config: Dict[str, Any] = Field(description="Session configuration")
+    turn_credentials: dict = Field(description="TURN server credentials")
+    ice_servers: List[dict] = Field(description="ICE servers configuration")
+    session_config: dict = Field(description="Session configuration")
     expires_at: datetime = Field(description="Session expiration time")
 
 class TelemedConsentRequest(SQLModel):
@@ -255,7 +255,7 @@ class TelemedSessionLogResponse(SQLModel):
     event: TelemedSessionEvent
     user_id: Optional[uuid.UUID] = None
     user_role: Optional[TelemedUserRole] = None
-    meta: Optional[Dict[str, Any]] = None
+    meta: Optional[dict] = None
     message: Optional[str] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
@@ -264,7 +264,7 @@ class TelemedSessionLogResponse(SQLModel):
 # WebRTC and SFU configuration schemas
 class WebRTCCredentials(SQLModel):
     """WebRTC credentials schema."""
-    ice_servers: List[Dict[str, Any]] = Field(description="ICE servers configuration")
+    ice_servers: List[dict] = Field(description="ICE servers configuration")
     turn_username: str = Field(description="TURN username")
     turn_password: str = Field(description="TURN password")
     turn_ttl: int = Field(default=3600, description="TURN credentials TTL in seconds")
@@ -275,7 +275,7 @@ class SFUConfig(SQLModel):
     api_key: str = Field(description="SFU API key")
     room_id: str = Field(description="SFU room ID")
     session_id: str = Field(description="SFU session ID")
-    capabilities: Dict[str, Any] = Field(description="SFU capabilities")
+    capabilities: dict = Field(description="SFU capabilities")
 
 class RecordingConfig(SQLModel):
     """Recording configuration schema."""
