@@ -14,7 +14,7 @@ from app.models.database import Patient, Appointment, Invoice, MedicalRecord
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
-require_dashboard_read = AuthDependencies.require_permission("dashboard:read")
+# Dashboard stats are available to all authenticated users
 
 
 @router.get("/stats", response_model=Dict[str, Any])
