@@ -11,14 +11,15 @@ from datetime import datetime
 
 from ...core.auth import AuthDependencies
 from ...db.session import get_db_session
+from ...models.telemedicine import TelemedSessionCreateRequest, TelemedSessionResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/telemed", tags=["telemedicine"])
 
-@router.post("/sessions", response_model=dict)
+@router.post("/sessions", response_model=TelemedSessionResponse)
 async def create_simple_session(
-    session_data: dict,
+    session_data: TelemedSessionCreateRequest,
     current_user = Depends(AuthDependencies.get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
@@ -27,13 +28,17 @@ async def create_simple_session(
         # Generate a simple session ID
         session_id = str(uuid.uuid4())
         
-        return {
-            "session_id": session_id,
-            "room_id": f"room_{session_id[:8]}",
-            "link_token": f"token_{session_id[:8]}",
-            "status": "created",
-            "message": "Session created successfully"
-        }
+        # For now, return a simple response without database storage
+        # In production, you would save to database using the TelemedSession model
+        return TelemedSessionResponse(
+            session_id=session_id,
+            room_id=f"room_{session_id[:8]}",
+            link_token=f"token_{session_id[:8]}",
+            status="created",
+            message="Session created successfully",
+            created_at=datetime.now(),
+            expires_at=datetime.now().replace(hour=23, minute=59, second=59)
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
