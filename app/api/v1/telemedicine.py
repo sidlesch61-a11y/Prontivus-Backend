@@ -45,6 +45,9 @@ async def create_simple_session(
 ):
     """Create a simple telemedicine session for testing."""
     try:
+        # Debug: Log the received data
+        logger.info(f"Received telemedicine session data: {session_data}")
+        
         # Generate a simple session ID
         session_id = str(uuid.uuid4())
         
