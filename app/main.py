@@ -15,7 +15,7 @@ import os
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine  # Complete consultation workflow + billing + extended features + telemedicine
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine, patient_call_system  # Complete consultation workflow + billing + extended features + telemedicine + patient call system
 
 
 # Configure logging
@@ -227,6 +227,7 @@ app.include_router(password_reset.router, prefix="/api/v1", tags=["Authenticatio
 app.include_router(reports_advanced.router, prefix="/api/v1", tags=["Reports"])
 app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time notifications
 app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
+app.include_router(patient_call_system.router, prefix="/api/v1", tags=["Patient Call System"])  # Patient calling system with secretary interface
 
 # Import exam database router
 from app.api.v1 import exam_database
