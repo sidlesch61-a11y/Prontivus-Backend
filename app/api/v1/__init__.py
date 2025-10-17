@@ -1,1 +1,1 @@
-# Empty init file for Python package
+# API v1 package initialization
