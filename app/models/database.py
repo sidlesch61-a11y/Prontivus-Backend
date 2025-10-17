@@ -16,6 +16,9 @@ from .exam_database import StandardExam, ExamCategory
 # Import print models
 from .print_models import PrintLog, PriceRule
 
+# Import vitals models
+from .vitals import PatientVitals
+
 
 class ClinicBase(SQLModel):
     """Base clinic model."""
