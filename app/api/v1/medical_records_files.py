@@ -15,7 +15,7 @@ from app.core.auth import AuthDependencies
 from pydantic import BaseModel
 from typing import List
 
-router = APIRouter(prefix="/medical_records", tags=["Medical Records - Files"])
+router = APIRouter(prefix="/medical_records-files", tags=["Medical Records - Files"])
 
 
 class FileResponse(BaseModel):

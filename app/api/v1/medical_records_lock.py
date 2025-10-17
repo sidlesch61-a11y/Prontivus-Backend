@@ -12,7 +12,7 @@ from app.db.session import get_db_session
 from app.core.auth import AuthDependencies, require_admin
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/medical_records", tags=["Medical Records - Locking"])
+router = APIRouter(prefix="/medical_records-lock", tags=["Medical Records - Locking"])
 
 
 class LockRecordRequest(BaseModel):
