@@ -66,7 +66,7 @@ async def list_medical_records(
         )
         doctor_name = doctor_result.scalar()
         
-        record_data = MedicalRecordResponse.from_orm(record)
+        record_data = MedicalRecordResponse.model_validate(record)
         record_data.patient_name = patient_name
         record_data.doctor_name = doctor_name
         record_responses.append(record_data)
@@ -145,7 +145,7 @@ async def create_medical_record(
         await db.commit()
         
         # Get related data for response
-        record_response = MedicalRecordResponse.from_orm(record)
+        record_response = MedicalRecordResponse.model_validate(record)
         record_response.patient_name = patient.name
         record_response.doctor_name = current_user.name
         
@@ -197,7 +197,7 @@ async def get_medical_record(
     )
     doctor_name = doctor_result.scalar()
     
-    record_response = MedicalRecordResponse.from_orm(record)
+    record_response = MedicalRecordResponse.model_validate(record)
     record_response.patient_name = patient_name
     record_response.doctor_name = doctor_name
     
@@ -258,7 +258,7 @@ async def update_medical_record(
     )
     doctor_name = doctor_result.scalar()
     
-    record_response = MedicalRecordResponse.from_orm(record)
+    record_response = MedicalRecordResponse.model_validate(record)
     record_response.patient_name = patient_name
     record_response.doctor_name = doctor_name
     
@@ -304,7 +304,7 @@ async def get_patient_records(
         )
         doctor_name = doctor_result.scalar()
         
-        record_data = MedicalRecordResponse.from_orm(record)
+        record_data = MedicalRecordResponse.model_validate(record)
         record_data.patient_name = patient.name
         record_data.doctor_name = doctor_name
         record_responses.append(record_data)

@@ -58,7 +58,7 @@ async def list_patients(
     patients = result.scalars().all()
     
     return PaginatedResponse(
-        items=[PatientResponse.from_orm(patient) for patient in patients],
+        items=[PatientResponse.model_validate(patient) for patient in patients],
         total=total,
         page=page,
         size=size,
@@ -154,7 +154,7 @@ async def create_patient(
         db.add(audit_log)
         await db.commit()
         
-        return PatientResponse.from_orm(patient)
+        return PatientResponse.model_validate(patient)
         
     except HTTPException:
         # Re-raise HTTP exceptions
