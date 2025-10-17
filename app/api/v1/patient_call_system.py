@@ -14,9 +14,21 @@ from datetime import datetime
 from app.db.session import get_db_session
 from app.core.auth import get_current_user
 from app.models.database import User, Patient, Appointment
-from app.models.consultation_extended import QueueStatusResponse
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
 
 router = APIRouter(prefix="/patient-call", tags=["Patient Call System"])
+
+# Simple response model for patient call queue
+class PatientCallResponse(BaseModel):
+    """Simple response model for patient call queue."""
+    patient_id: str
+    patient_name: str
+    appointment_time: datetime
+    status: str
+    priority: int
+    insurance_provider: Optional[str] = None
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -68,7 +80,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-@router.get("/queue", response_model=List[QueueStatusResponse])
+@router.get("/queue", response_model=List[PatientCallResponse])
 async def get_call_queue(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
@@ -87,7 +99,7 @@ async def get_call_queue(
         
         queue = []
         for patient, appointment in appointments:
-            queue.append(QueueStatusResponse(
+            queue.append(PatientCallResponse(
                 patient_id=str(patient.id),
                 patient_name=patient.name,
                 appointment_time=appointment.start_time,
