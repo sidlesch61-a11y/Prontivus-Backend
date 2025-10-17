@@ -17,6 +17,7 @@ from app.models.consultation_extended import (
     ExamRequest, ExamRequestCreate,
     Referral, ReferralCreate
 )
+from app.models.database import Patient, Clinic
 from pydantic import BaseModel
 from typing import List, Optional
 from app.models.database import User, Prescription
@@ -160,6 +161,103 @@ async def get_prescription_items(
     
     return items
 
+
+@router.get("/prescriptions/{prescription_id}/pdf")
+async def get_prescription_pdf(
+    prescription_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get prescription PDF."""
+    try:
+        # Get prescription
+        stmt = select(Prescription).where(Prescription.id == prescription_id)
+        result = await db.execute(stmt)
+        prescription = result.scalar_one_or_none()
+        
+        if not prescription:
+            raise HTTPException(status_code=404, detail="Prescription not found")
+        
+        # Get prescription items
+        stmt = select(PrescriptionItem).where(PrescriptionItem.prescription_id == prescription_id)
+        result = await db.execute(stmt)
+        items = result.scalars().all()
+        
+        # Generate PDF using the prescription PDF service
+        from app.services.prescription_pdf import PrescriptionPDFGenerator
+        
+        # Get patient data
+        stmt = select(Patient).where(Patient.id == prescription.patient_id)
+        result = await db.execute(stmt)
+        patient = result.scalar_one_or_none()
+        
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        
+        # Get clinic data
+        stmt = select(Clinic).where(Clinic.id == prescription.clinic_id)
+        result = await db.execute(stmt)
+        clinic = result.scalar_one_or_none()
+        
+        if not clinic:
+            raise HTTPException(status_code=404, detail="Clinic not found")
+        
+        # Prepare data for PDF generation
+        prescription_data = {
+            "id": str(prescription.id),
+            "created_at": prescription.created_at,
+            "notes": prescription.notes or "",
+            "items": [
+                {
+                    "medication": item.medication,
+                    "dosage": item.dosage,
+                    "frequency": item.frequency,
+                    "duration": item.duration,
+                    "instructions": item.instructions or ""
+                }
+                for item in items
+            ]
+        }
+        
+        clinic_data = {
+            "name": clinic.name,
+            "address": clinic.address or "",
+            "phone": clinic.phone or "",
+            "email": clinic.email or ""
+        }
+        
+        doctor_data = {
+            "name": current_user.name,
+            "crm": current_user.crm or "",
+            "specialty": current_user.specialty or ""
+        }
+        
+        patient_data = {
+            "name": patient.name,
+            "birthdate": patient.birthdate,
+            "cpf": patient.cpf or "",
+            "address": patient.address or {}
+        }
+        
+        # Generate PDF
+        pdf_generator = PrescriptionPDFGenerator()
+        pdf_bytes = pdf_generator.generate_prescription_pdf(
+            prescription_data=prescription_data,
+            clinic_data=clinic_data,
+            doctor_data=doctor_data,
+            patient_data=patient_data
+        )
+        
+        # Return PDF as response
+        from fastapi.responses import Response
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=prescription_{prescription_id}.pdf"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
 @router.post("/prescriptions/{prescription_id}/generate-pdf")
 async def generate_prescription_pdf_endpoint(
