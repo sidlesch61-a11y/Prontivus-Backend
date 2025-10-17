@@ -323,7 +323,7 @@ async def export_report_csv(
             appointments = result.scalars().all()
             
             writer = csv.writer(output)
-            writer.writerow(["ID", "Patient ID", "Doctor ID", "Start Time", "Status", "Notes"])
+            writer.writerow(["ID", "Patient ID", "Doctor ID", "Start Time", "End Time", "Status", "Price", "Notes"])
             
             for apt in appointments:
                 writer.writerow([
@@ -331,7 +331,9 @@ async def export_report_csv(
                     str(apt.patient_id),
                     str(apt.doctor_id),
                     apt.start_time.isoformat() if apt.start_time else "",
+                    apt.end_time.isoformat() if apt.end_time else "",
                     apt.status,
+                    apt.price if apt.price is not None else "",
                     apt.notes or ""
                 ])
         
