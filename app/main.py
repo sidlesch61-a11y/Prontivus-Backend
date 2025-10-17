@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
 import structlog
 import os
 
@@ -101,6 +102,35 @@ async def log_requests(request: Request, call_next):
 
 
 # Global exception handlers
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with detailed logging."""
+    error_details = exc.errors()
+    logger.error(
+        "Validation error",
+        path=request.url.path,
+        method=request.method,
+        errors=error_details,
+        body=await request.body() if request.method in ["POST", "PUT", "PATCH"] else None
+    )
+    
+    # Ensure CORS headers are included in error responses
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin and origin in settings.cors_origins_list:
+        headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    
+    return JSONResponse(
+        status_code=422,
+        content={"detail": error_details},
+        headers=headers
+    )
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions."""
