@@ -122,6 +122,7 @@ class AppointmentBase(SQLModel):
     start_time: datetime
     end_time: datetime
     status: str = Field(default="scheduled")
+    notes: Optional[str] = None
     price: Optional[float] = None
 
 
