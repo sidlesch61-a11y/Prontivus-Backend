@@ -2,7 +2,7 @@
 Advanced Reports & Analytics API
 Enhanced reporting endpoints for comprehensive KPIs
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, String, and_, or_, extract
 from datetime import datetime, timedelta
