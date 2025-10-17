@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/telemed", tags=["telemedicine"])
 
+@router.get("/test")
+async def test_telemed_endpoint():
+    """Test endpoint to verify telemedicine routing is working."""
+    return {"message": "Telemedicine endpoint is working", "status": "ok"}
+
 class SimpleTelemedSessionRequest(BaseModel):
     """Simple request for telemedicine session creation."""
     appointment_id: str
@@ -47,6 +52,8 @@ async def create_simple_session(
     try:
         # Debug: Log the received data
         logger.info(f"Received telemedicine session data: {session_data}")
+        logger.info(f"Session data type: {type(session_data)}")
+        logger.info(f"Session data dict: {session_data.model_dump() if hasattr(session_data, 'model_dump') else session_data}")
         
         # Generate a simple session ID
         session_id = str(uuid.uuid4())
