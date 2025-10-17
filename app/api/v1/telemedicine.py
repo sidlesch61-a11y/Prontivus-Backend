@@ -11,13 +11,24 @@ from datetime import datetime
 
 from ...core.auth import AuthDependencies
 from ...db.session import get_db_session
-from ...models.telemedicine import TelemedSessionCreateRequest, TelemedSessionResponse
+from ...models.telemedicine import TelemedSessionCreateRequest
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/telemed", tags=["telemedicine"])
 
-@router.post("/sessions", response_model=TelemedSessionResponse)
+class SimpleTelemedSessionResponse(BaseModel):
+    """Simple response for telemedicine session creation."""
+    session_id: str
+    room_id: str
+    link_token: str
+    status: str
+    message: str
+    created_at: str
+    expires_at: str
+
+@router.post("/sessions", response_model=SimpleTelemedSessionResponse)
 async def create_simple_session(
     session_data: TelemedSessionCreateRequest,
     current_user = Depends(AuthDependencies.get_current_user),
@@ -30,14 +41,14 @@ async def create_simple_session(
         
         # For now, return a simple response without database storage
         # In production, you would save to database using the TelemedSession model
-        return TelemedSessionResponse(
+        return SimpleTelemedSessionResponse(
             session_id=session_id,
             room_id=f"room_{session_id[:8]}",
             link_token=f"token_{session_id[:8]}",
             status="created",
             message="Session created successfully",
-            created_at=datetime.now(),
-            expires_at=datetime.now().replace(hour=23, minute=59, second=59)
+            created_at=datetime.now().isoformat(),
+            expires_at=datetime.now().replace(hour=23, minute=59, second=59).isoformat()
         )
     except Exception as e:
         raise HTTPException(
