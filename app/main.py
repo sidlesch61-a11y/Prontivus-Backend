@@ -16,7 +16,7 @@ import os
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine, patient_call_system  # Complete consultation workflow + billing + extended features + telemedicine + patient call system
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine, patient_call_system, cors_test  # Complete consultation workflow + billing + extended features + telemedicine + patient call system + CORS test
 
 
 # Configure logging
@@ -64,13 +64,41 @@ app = FastAPI(
 )
 
 # CORS middleware - Must be added before other middleware
+# Enhanced CORS configuration for better compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=settings.cors_allow_credentials,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "http://localhost:8080",
+        "http://localhost:8000",
+        "https://prontivus-frontend-ten.vercel.app",
+        "https://prontivus.com",
+        "https://www.prontivus.com",
+        "https://*.vercel.app",  # Allow all Vercel deployments
+        "https://*.onrender.com"  # Allow all Render deployments
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+        "Cache-Control",
+        "Pragma"
+    ],
+    expose_headers=[
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Credentials",
+        "Access-Control-Allow-Methods",
+        "Access-Control-Allow-Headers"
+    ],
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
@@ -86,6 +114,21 @@ if settings.is_production:
         ]
     )
 
+
+# CORS preflight handler
+@app.options("/{path:path}")
+async def options_handler(request: Request, path: str):
+    """Handle CORS preflight requests."""
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD",
+            "Access-Control-Allow-Headers": "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Pragma",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 # Request logging middleware
 @app.middleware("http")
@@ -257,7 +300,10 @@ app.include_router(password_reset.router, prefix="/api/v1", tags=["Authenticatio
 app.include_router(reports_advanced.router, prefix="/api/v1", tags=["Reports"])
 app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time notifications
 app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
-app.include_router(patient_call_system.router, prefix="/api/v1", tags=["Patient Call System"])  # Patient calling system with secretary interface
+app.include_router(patient_call_system.router, prefix="/api/v1", tags=["Patient Call System"])  # Patient calling system
+
+# CORS test endpoint
+app.include_router(cors_test.router, prefix="/api/v1", tags=["CORS Test"])  # CORS testing endpoint with secretary interface
 
 # Import team management router
 from app.api.v1 import team_management
