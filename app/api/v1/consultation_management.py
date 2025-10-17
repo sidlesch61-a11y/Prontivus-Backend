@@ -673,8 +673,70 @@ async def finalize_consultation(
             queue_entry.completed_at = datetime.now()
             queue_entry.updated_at = datetime.now()
         
-        # Update consultation timestamp
+        # Update consultation timestamp and status
         consultation.updated_at = datetime.now()
+        consultation.status = "completed"
+        
+        # Create historical record with all consultation data
+        from app.models.consultation_extended import ConsultationExtended
+        from app.models.database import Patient, User
+        
+        # Get patient and doctor data for historical record
+        patient_stmt = select(Patient).where(Patient.id == consultation.patient_id)
+        patient_result = await db.execute(patient_stmt)
+        patient = patient_result.scalar_one_or_none()
+        
+        doctor_stmt = select(User).where(User.id == consultation.doctor_id)
+        doctor_result = await db.execute(doctor_stmt)
+        doctor = doctor_result.scalar_one_or_none()
+        
+        if patient and doctor:
+            # Create comprehensive historical record
+            historical_record = ConsultationExtended(
+                consultation_id=consultation.id,
+                patient_id=consultation.patient_id,
+                doctor_id=consultation.doctor_id,
+                appointment_id=consultation.appointment_id,
+                clinic_id=consultation.clinic_id,
+                
+                # Anamnese data
+                chief_complaint=consultation.chief_complaint or "",
+                history_present_illness=consultation.history_present_illness or "",
+                past_medical_history=consultation.past_medical_history or "",
+                family_history=consultation.family_history or "",
+                social_history=consultation.social_history or "",
+                medications_in_use=consultation.medications_in_use or "",
+                allergies=consultation.allergies or "",
+                
+                # Physical examination
+                physical_examination=consultation.physical_examination or "",
+                vital_signs=consultation.vital_signs or {},
+                
+                # Diagnosis and treatment
+                diagnosis=consultation.diagnosis or "",
+                diagnosis_code=consultation.diagnosis_code or "",
+                treatment_plan=consultation.treatment_plan or "",
+                follow_up=consultation.follow_up or "",
+                notes=consultation.notes or "",
+                
+                # Prescription data
+                prescription_type=consultation.prescription_type or "",
+                medications=consultation.medications or [],
+                prescription_notes=consultation.prescription_notes or "",
+                
+                # TISS/SADT data
+                tiss_guide=consultation.tiss_guide or {},
+                
+                # Status and metadata
+                status="completed",
+                is_locked=True,
+                locked_by=current_user.id,
+                locked_at=datetime.now(),
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            
+            db.add(historical_record)
         
         # Also update appointment status so reservation list reflects changes
         try:

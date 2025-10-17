@@ -15,18 +15,18 @@ from app.api.v1.auth import get_current_user
 from app.models.print_models import PrintRequest, PrintResponse, PrintLog
 from app.models.database import Consultation
 
-# Conditional import for print service
+# Conditional import for enhanced print service
 try:
-    from app.services.print_service import print_service
+    from app.services.enhanced_print_service import enhanced_print_service
     PRINT_SERVICE_AVAILABLE = True
 except ImportError:
     PRINT_SERVICE_AVAILABLE = False
-    print_service = None
+    enhanced_print_service = None
 
 router = APIRouter()
 
 
-@router.post("/print/{document_type}/{consultation_id}", response_model=PrintResponse)
+@router.post("/print/document/{document_type}/{consultation_id}", response_model=PrintResponse)
 async def print_document(
     document_type: str,
     consultation_id: UUID,
@@ -40,13 +40,15 @@ async def print_document(
     
     Tipos de documento suportados:
     - prescription: Receita médica
+    - prescription_controlled: Receita azul (controlada)
     - certificate: Atestado médico
     - exam_request: Solicitação de exame
     - referral: Encaminhamento médico
+    - sadt_guide: Guia SADT
     """
     
     # Validate document type
-    valid_types = ["prescription", "certificate", "exam_request", "referral"]
+    valid_types = ["prescription", "prescription_controlled", "certificate", "exam_request", "referral", "sadt_guide"]
     if document_type not in valid_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,7 +62,7 @@ async def print_document(
         )
     
     try:
-        result = await print_service.print_document(
+        result = await enhanced_print_service.print_document(
             db=db,
             consultation_id=consultation_id,
             document_type=document_type,
@@ -73,6 +75,38 @@ async def print_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao processar impressão: {str(e)}"
+        )
+
+
+@router.post("/print/consolidated/{consultation_id}", response_model=PrintResponse)
+async def print_consolidated_documents(
+    consultation_id: UUID,
+    document_types: List[str] = Query(default=None, description="Tipos de documentos para consolidar"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db_session)
+):
+    """
+    Imprimir todos os documentos consolidados em um único PDF.
+    """
+    
+    if not PRINT_SERVICE_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de impressão não disponível. weasyprint não está instalado."
+        )
+    
+    try:
+        result = await enhanced_print_service.print_consolidated_documents(
+            db=db,
+            consultation_id=consultation_id,
+            printed_by=current_user.id,
+            document_types=document_types
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar impressão consolidada: {str(e)}"
         )
 
 

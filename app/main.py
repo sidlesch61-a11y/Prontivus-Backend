@@ -259,6 +259,10 @@ app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-t
 app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
 app.include_router(patient_call_system.router, prefix="/api/v1", tags=["Patient Call System"])  # Patient calling system with secretary interface
 
+# Import team management router
+from app.api.v1 import team_management
+app.include_router(team_management.router, prefix="/api/v1", tags=["Team Management"])  # Team management and user roles
+
 # Import exam database router
 from app.api.v1 import exam_database
 app.include_router(exam_database.router, tags=["Exam Database"])  # Standardized exam database
