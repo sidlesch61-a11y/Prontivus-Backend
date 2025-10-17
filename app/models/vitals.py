@@ -10,8 +10,8 @@ import uuid
 
 class PatientVitalsBase(SQLModel):
     """Base patient vitals model."""
-    patient_id: uuid.UUID
-    consultation_id: Optional[uuid.UUID] = None
+    patient_id: uuid.UUID = Field(foreign_key="patients.id")
+    consultation_id: Optional[uuid.UUID] = Field(default=None, foreign_key="consultations.id")
     blood_pressure_systolic: Optional[int] = None
     blood_pressure_diastolic: Optional[int] = None
     heart_rate: Optional[int] = None

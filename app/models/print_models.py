@@ -10,9 +10,9 @@ import uuid
 
 class PrintLogBase(SQLModel):
     """Base print log model."""
-    consultation_id: uuid.UUID
+    consultation_id: uuid.UUID = Field(foreign_key="consultations.id")
     document_type: str
-    printed_by: uuid.UUID
+    printed_by: uuid.UUID = Field(foreign_key="users.id")
     printer_name: Optional[str] = None
     pages_count: int = Field(default=1)
     status: str = Field(default="success")
@@ -33,7 +33,7 @@ class PrintLog(PrintLogBase, table=True):
 
 class PriceRuleBase(SQLModel):
     """Base price rule model."""
-    convenio_id: Optional[uuid.UUID] = None
+    convenio_id: Optional[uuid.UUID] = Field(default=None, foreign_key="insurance_providers.id")
     consulta_tipo: str
     valor: float
     is_active: bool = Field(default=True)
