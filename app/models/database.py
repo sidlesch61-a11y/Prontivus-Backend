@@ -114,6 +114,7 @@ class Patient(PatientBase, table=True):
     medical_records: List["MedicalRecord"] = Relationship(back_populates="patient")
     files: List["File"] = Relationship(back_populates="patient")
     invoices: List["Invoice"] = Relationship(back_populates="patient")
+    vitals: List["PatientVitals"] = Relationship(back_populates="patient")
 
 
 class AppointmentBase(SQLModel):
@@ -177,6 +178,10 @@ class Consultation(ConsultationBase, table=True):
     locked_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+    
+    # Relationships
+    print_logs: List["PrintLog"] = Relationship(back_populates="consultation")
+    vitals: List["PatientVitals"] = Relationship(back_populates="consultation")
 
 
 class MedicalRecordBase(SQLModel):
