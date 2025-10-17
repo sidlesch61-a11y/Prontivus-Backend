@@ -80,7 +80,7 @@ async def get_call_queue(
             Appointment, Patient.id == Appointment.patient_id
         ).where(
             Appointment.status == "scheduled"
-        ).order_by(Appointment.appointment_time)
+        ).order_by(Appointment.start_time)
         
         result = await db.execute(query)
         appointments = result.all()
@@ -90,7 +90,7 @@ async def get_call_queue(
             queue.append(QueueStatusResponse(
                 patient_id=str(patient.id),
                 patient_name=patient.name,
-                appointment_time=appointment.appointment_time,
+                appointment_time=appointment.start_time,
                 status="waiting",
                 priority=1,
                 insurance_provider=patient.insurance_provider or "Particular"
@@ -121,7 +121,7 @@ async def call_patient(
         appointment_query = select(Appointment).where(
             Appointment.patient_id == patient_id,
             Appointment.status == "scheduled"
-        ).order_by(Appointment.appointment_time.desc()).limit(1)
+        ).order_by(Appointment.start_time.desc()).limit(1)
         
         appointment_result = await db.execute(appointment_query)
         appointment = appointment_result.scalar_one_or_none()
@@ -134,11 +134,11 @@ async def call_patient(
             "type": "patient_call",
             "patient_id": str(patient.id),
             "patient_name": patient.name,
-            "appointment_time": appointment.appointment_time.isoformat(),
+            "appointment_time": appointment.start_time.isoformat(),
             "insurance_provider": patient.insurance_provider or "Particular",
             "called_by": current_user.name,
             "called_at": datetime.utcnow().isoformat(),
-            "message": f"Paciente {patient.name} - Dr(a). {appointment.doctor_name or 'Médico'}"
+            "message": f"Paciente {patient.name} - Dr(a). Médico"
         }
         
         # Send to monitor displays
