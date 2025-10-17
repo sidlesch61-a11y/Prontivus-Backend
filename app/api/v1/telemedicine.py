@@ -11,12 +11,21 @@ from datetime import datetime
 
 from ...core.auth import AuthDependencies
 from ...db.session import get_db_session
-from ...models.telemedicine import TelemedSessionCreateRequest
 from pydantic import BaseModel
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/telemed", tags=["telemedicine"])
+
+class SimpleTelemedSessionRequest(BaseModel):
+    """Simple request for telemedicine session creation."""
+    appointment_id: str
+    doctor_id: str
+    allow_recording: bool = False
+    max_duration_minutes: int = 60
+    scheduled_start: str
+    scheduled_end: str
 
 class SimpleTelemedSessionResponse(BaseModel):
     """Simple response for telemedicine session creation."""
@@ -30,7 +39,7 @@ class SimpleTelemedSessionResponse(BaseModel):
 
 @router.post("/sessions", response_model=SimpleTelemedSessionResponse)
 async def create_simple_session(
-    session_data: TelemedSessionCreateRequest,
+    session_data: SimpleTelemedSessionRequest,
     current_user = Depends(AuthDependencies.get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
