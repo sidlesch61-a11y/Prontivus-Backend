@@ -47,7 +47,7 @@ async def list_users(
     users = result.scalars().all()
     
     return {
-        "items": [UserResponse.from_orm(user) for user in users],
+        "items": [UserResponse.model_validate(user) for user in users],
         "total": total,
         "page": page,
         "size": size,
@@ -77,7 +77,7 @@ async def get_user(
             detail="User not found"
         )
     
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
@@ -123,4 +123,4 @@ async def update_user(
     db.add(audit_log)
     await db.commit()
     
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user)

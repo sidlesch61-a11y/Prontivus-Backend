@@ -88,7 +88,7 @@ async def list_appointments(
         )
         doctor_name = doctor_result.scalar()
         
-        appointment_data = AppointmentResponse.from_orm(appointment)
+        appointment_data = AppointmentResponse.model_validate(appointment)
         appointment_data.patient_name = patient_name
         appointment_data.doctor_name = doctor_name
         appointment_responses.append(appointment_data)
@@ -225,7 +225,7 @@ async def create_appointment(
         await db.commit()
         
         # Get related data for response
-        appointment_response = AppointmentResponse.from_orm(appointment)
+        appointment_response = AppointmentResponse.model_validate(appointment)
         appointment_response.patient_name = patient.name
         appointment_response.doctor_name = doctor.name
         
@@ -284,7 +284,7 @@ async def get_appointment(
     )
     doctor_name = doctor_result.scalar()
     
-    appointment_response = AppointmentResponse.from_orm(appointment)
+    appointment_response = AppointmentResponse.model_validate(appointment)
     appointment_response.patient_name = patient_name
     appointment_response.doctor_name = doctor_name
     
@@ -350,7 +350,7 @@ async def update_appointment(
         await db.refresh(appointment)
         
         # Build response
-        appointment_response = AppointmentResponse.from_orm(appointment)
+        appointment_response = AppointmentResponse.model_validate(appointment)
         appointment_response.patient_name = patient_name
         appointment_response.doctor_name = doctor_name
         
