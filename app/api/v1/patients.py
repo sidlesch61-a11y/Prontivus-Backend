@@ -35,6 +35,18 @@ async def list_patients_auth_test(
     return {"message": "Auth test endpoint working", "user_id": str(current_user.id), "status": "ok"}
 
 
+@router.get("/model-test", response_model=dict)
+async def list_patients_model_test(
+    search: Optional[str] = Query(None, description="Search by name or CPF"),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    current_user = Depends(require_patients_read),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Test endpoint with auth and simple dict response model."""
+    return {"message": "Model test endpoint working", "user_id": str(current_user.id), "status": "ok"}
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
