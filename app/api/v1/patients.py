@@ -281,13 +281,7 @@ async def list_patients_final_test(
         raise HTTPException(status_code=500, detail=f"Final test error: {str(e)}")
 
 
-@router.get("/", response_model=dict)
-async def list_patients_minimal():
-    """Minimal test endpoint for root path."""
-    return {"message": "Root path works", "status": "ok"}
-
-
-@router.get("/list", response_model=PaginatedResponse)
+@router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
     page: int = Query(1, ge=1),
@@ -338,7 +332,9 @@ async def list_patients(
             pages=(total + size - 1) // size
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Main endpoint error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error listing patients: {str(e)}")
+
+
 
 
 @router.post("/", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
