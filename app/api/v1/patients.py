@@ -337,7 +337,7 @@ async def list_patients(
 
 
 
-@router.post("/", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
 async def create_patient(
     patient_data: PatientCreate,
     current_user = Depends(require_patients_write),

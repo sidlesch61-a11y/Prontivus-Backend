@@ -80,7 +80,7 @@ async def list_medical_records(
     )
 
 
-@router.post("/", response_model=MedicalRecordResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=MedicalRecordResponse, status_code=status.HTTP_201_CREATED)
 async def create_medical_record(
     record_data: MedicalRecordCreate,
     current_user = Depends(require_medical_records_write),
