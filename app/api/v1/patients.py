@@ -15,6 +15,12 @@ from app.schemas import PatientCreate, PatientUpdate, PatientResponse, Paginatio
 router = APIRouter()
 
 
+@router.get("/test")
+async def test_patients():
+    """Test endpoint for patients router."""
+    return {"message": "Patients router is working", "status": "ok"}
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
