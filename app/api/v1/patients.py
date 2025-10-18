@@ -281,6 +281,12 @@ async def list_patients_final_test(
         raise HTTPException(status_code=500, detail=f"Final test error: {str(e)}")
 
 
+@router.get("/", response_model=dict)
+async def list_patients_minimal():
+    """Minimal test endpoint for root path."""
+    return {"message": "Root path works", "status": "ok"}
+
+
 @router.get("/list", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
