@@ -17,9 +17,10 @@ from app.models import (
 class BaseSchema(BaseModel):
     """Base schema with common configuration."""
     
-    class Config:
-        from_attributes = True
-        use_enum_values = True
+    model_config = {
+        "from_attributes": True,
+        "use_enum_values": True
+    }
 
 
 # Auth schemas
