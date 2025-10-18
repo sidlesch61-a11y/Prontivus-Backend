@@ -190,7 +190,7 @@ async def get_patient(
             detail="Patient not found"
         )
     
-    return PatientResponse.from_orm(patient)
+    return PatientResponse.model_validate(patient)
 
 
 @router.patch("/{patient_id}", response_model=PatientResponse)
@@ -249,7 +249,7 @@ async def update_patient(
     db.add(audit_log)
     await db.commit()
     
-    return PatientResponse.from_orm(patient)
+    return PatientResponse.model_validate(patient)
 
 
 @router.delete("/{patient_id}")
