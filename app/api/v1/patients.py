@@ -47,6 +47,18 @@ async def list_patients_model_test(
     return {"message": "Model test endpoint working", "user_id": str(current_user.id), "status": "ok"}
 
 
+@router.get("/paginated-test", response_model=PaginatedResponse)
+async def list_patients_paginated_test():
+    """Test endpoint with PaginatedResponse model only."""
+    return PaginatedResponse(
+        items=[{"id": "1", "name": "Test Patient"}],
+        total=1,
+        page=1,
+        size=20,
+        pages=1
+    )
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
