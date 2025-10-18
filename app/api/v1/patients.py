@@ -289,7 +289,7 @@ async def list_patients(
     current_user = Depends(require_patients_read),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """List patients with pagination and search."""
+    """List patients with pagination and search. Fixed 405 Method Not Allowed error."""
     try:
         query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
         
