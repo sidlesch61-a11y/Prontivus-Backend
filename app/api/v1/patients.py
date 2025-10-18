@@ -21,6 +21,12 @@ async def test_patients():
     return {"message": "Patients router is working", "status": "ok"}
 
 
+@router.get("/simple")
+async def list_patients_simple():
+    """Simple patients endpoint without authentication for testing."""
+    return {"message": "Simple patients endpoint working", "status": "ok"}
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
