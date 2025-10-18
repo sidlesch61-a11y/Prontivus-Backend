@@ -448,7 +448,7 @@ class PaginationParams(BaseSchema):
 
 class PaginatedResponse(BaseSchema):
     """Paginated response schema."""
-    items: List[Any]
+    items: List[dict]
     total: int
     page: int
     size: int
