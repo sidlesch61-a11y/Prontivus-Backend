@@ -290,46 +290,49 @@ async def list_patients(
     db: AsyncSession = Depends(get_db_session)
 ):
     """List patients with pagination and search."""
-    query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
-    
-    # Add search filter
-    if search:
-        search_term = f"%{search}%"
-        query = query.where(
-            or_(
-                Patient.name.ilike(search_term),
-                Patient.cpf.ilike(search_term)
+    try:
+        query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
+        
+        # Add search filter
+        if search:
+            search_term = f"%{search}%"
+            query = query.where(
+                or_(
+                    Patient.name.ilike(search_term),
+                    Patient.cpf.ilike(search_term)
+                )
             )
-        )
-    
-    # Get total count
-    count_query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
-    if search:
-        search_term = f"%{search}%"
-        count_query = count_query.where(
-            or_(
-                Patient.name.ilike(search_term),
-                Patient.cpf.ilike(search_term)
+        
+        # Get total count
+        count_query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
+        if search:
+            search_term = f"%{search}%"
+            count_query = count_query.where(
+                or_(
+                    Patient.name.ilike(search_term),
+                    Patient.cpf.ilike(search_term)
+                )
             )
+        
+        total_result = await db.execute(count_query)
+        total = len(total_result.scalars().all())
+        
+        # Apply pagination
+        offset = (page - 1) * size
+        query = query.offset(offset).limit(size)
+        
+        result = await db.execute(query)
+        patients = result.scalars().all()
+        
+        return PaginatedResponse(
+            items=[PatientResponse.model_validate(patient) for patient in patients],
+            total=total,
+            page=page,
+            size=size,
+            pages=(total + size - 1) // size
         )
-    
-    total_result = await db.execute(count_query)
-    total = len(total_result.scalars().all())
-    
-    # Apply pagination
-    offset = (page - 1) * size
-    query = query.offset(offset).limit(size)
-    
-    result = await db.execute(query)
-    patients = result.scalars().all()
-    
-    return PaginatedResponse(
-        items=[PatientResponse.model_validate(patient) for patient in patients],
-        total=total,
-        page=page,
-        size=size,
-        pages=(total + size - 1) // size
-    )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Main endpoint error: {str(e)}")
 
 
 @router.post("/", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
