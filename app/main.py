@@ -353,7 +353,8 @@ async def root():
         "message": f"Welcome to {settings.app_name} API",
         "version": settings.app_version,
         "environment": settings.app_env,
-        "docs": "/docs" if settings.debug else "Documentation not available in production"
+        "docs": "/docs" if settings.debug else "Documentation not available in production",
+        "deployment_version": "v2.0-pydantic-fix"
     }
 
 
