@@ -153,6 +153,7 @@ class PatientResponse(BaseSchema):
     gender: str
     cpf: Optional[str]
     address: Optional[Dict[str, Any]]
+    city: Optional[str]
     phone: Optional[str]
     email: Optional[str]
     insurance_number: Optional[str]
