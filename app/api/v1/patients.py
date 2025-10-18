@@ -21,6 +21,12 @@ async def test_patients():
     return {"message": "Patients router is working", "status": "ok"}
 
 
+@router.get("/deployment-test")
+async def deployment_test():
+    """Test endpoint to verify deployment is working."""
+    return {"message": "Deployment test successful", "timestamp": "2025-01-18T09:00:00Z", "status": "ok"}
+
+
 @router.get("/simple")
 async def list_patients_simple():
     """Simple patients endpoint without authentication for testing."""
