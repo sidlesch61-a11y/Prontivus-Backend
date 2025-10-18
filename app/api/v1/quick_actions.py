@@ -34,10 +34,11 @@ class PrescriptionCreateRequest(BaseModel):
     items: List[dict]
     notes: Optional[str] = None
     
-    class Config:
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             uuid.UUID: str
         }
+    }
 
 class CertificateCreateRequest(BaseModel):
     consultation_id: str
@@ -47,10 +48,11 @@ class CertificateCreateRequest(BaseModel):
     days_off: Optional[int] = None  # Changed from str to int to match database model
     cid10_code: Optional[str] = None
     
-    class Config:
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             uuid.UUID: str
         }
+    }
 
 class ExamRequestCreateRequest(BaseModel):
     consultation_id: str
@@ -61,10 +63,11 @@ class ExamRequestCreateRequest(BaseModel):
     urgency: str = "normal"
     instructions: Optional[str] = None
     
-    class Config:
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             uuid.UUID: str
         }
+    }
 
 class ReferralCreateRequest(BaseModel):
     consultation_id: str
@@ -74,10 +77,11 @@ class ReferralCreateRequest(BaseModel):
     urgency: str = "normal"
     notes: Optional[str] = None
     
-    class Config:
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             uuid.UUID: str
         }
+    }
 
 # ============================================================================
 # PRESCRIPTION ENDPOINTS

@@ -27,8 +27,9 @@ class FileResponse(BaseModel):
     uploaded_by: str
     url: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class ListFilesResponse(BaseModel):
