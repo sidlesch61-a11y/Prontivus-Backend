@@ -330,6 +330,14 @@ app.include_router(pricing_api.router, prefix="/api/v1", tags=["Pricing"])  # Au
 from app.api.v1 import vitals_api
 app.include_router(vitals_api.router, prefix="/api/v1", tags=["Vitals"])  # Patient vitals with height field
 
+# Import consultation finalization router
+from app.api.v1 import consultation_finalization
+app.include_router(consultation_finalization.router, prefix="/api/v1/consultations", tags=["Consultation Finalization"])  # Consultation finalization and history
+
+# Import team management router
+from app.api.v1 import team_management
+app.include_router(team_management.router, prefix="/api/v1/team", tags=["Team Management"])  # Team management and user roles
+
 app.include_router(emergency_fix.router, prefix="/api/v1", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 
 # Static files for attachments
