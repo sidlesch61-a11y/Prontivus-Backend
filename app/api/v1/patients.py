@@ -281,7 +281,13 @@ async def list_patients_final_test(
         raise HTTPException(status_code=500, detail=f"Final test error: {str(e)}")
 
 
-@router.get("/", response_model=PaginatedResponse)
+@router.get("/", response_model=dict)
+async def list_patients_root():
+    """Simple root endpoint to test if routing works."""
+    return {"message": "Root patients endpoint is working", "status": "ok"}
+
+
+@router.get("/list", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
     page: int = Query(1, ge=1),
@@ -289,7 +295,7 @@ async def list_patients(
     current_user = Depends(require_patients_read),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """List patients with pagination and search. Fixed 405 Method Not Allowed error."""
+    """List patients with pagination and search."""
     try:
         query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
         
