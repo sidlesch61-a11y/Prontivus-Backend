@@ -63,7 +63,7 @@ async def list_invoices(
                 )
                 patient_name = patient_result.scalar()
             
-            invoice_data = InvoiceResponse.from_orm(invoice)
+            invoice_data = InvoiceResponse.model_validate(invoice)
             invoice_data.patient_name = patient_name
             invoice_responses.append(invoice_data)
         
@@ -138,7 +138,7 @@ async def create_invoice(
         )
         patient_name = patient_result.scalar()
     
-    invoice_response = InvoiceResponse.from_orm(invoice)
+    invoice_response = InvoiceResponse.model_validate(invoice)
     invoice_response.patient_name = patient_name
     
     return invoice_response
@@ -173,7 +173,7 @@ async def get_invoice(
         )
         patient_name = patient_result.scalar()
     
-    invoice_response = InvoiceResponse.from_orm(invoice)
+    invoice_response = InvoiceResponse.model_validate(invoice)
     invoice_response.patient_name = patient_name
     
     return invoice_response
@@ -274,7 +274,7 @@ async def update_invoice(
     )
     patient_name = patient_result.scalar()
     
-    invoice_response = InvoiceResponse.from_orm(invoice)
+    invoice_response = InvoiceResponse.model_validate(invoice)
     invoice_response.patient_name = patient_name
     
     return invoice_response
