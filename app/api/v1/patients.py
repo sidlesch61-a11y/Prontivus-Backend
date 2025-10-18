@@ -125,6 +125,38 @@ async def list_patients_db_test(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
+@router.get("/serialization-test", response_model=PaginatedResponse)
+async def list_patients_serialization_test(
+    current_user = Depends(require_patients_read),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Test endpoint with PatientResponse.model_validate to isolate serialization issue."""
+    try:
+        # Simple database query
+        query = select(Patient).where(Patient.clinic_id == current_user.clinic_id).limit(3)
+        result = await db.execute(query)
+        patients = result.scalars().all()
+        
+        # Test PatientResponse.model_validate
+        patient_responses = []
+        for patient in patients:
+            try:
+                patient_response = PatientResponse.model_validate(patient)
+                patient_responses.append(patient_response)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Serialization error for patient {patient.id}: {str(e)}")
+        
+        return PaginatedResponse(
+            items=patient_responses,
+            total=len(patient_responses),
+            page=1,
+            size=3,
+            pages=1
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
