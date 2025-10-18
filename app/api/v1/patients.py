@@ -27,6 +27,14 @@ async def list_patients_simple():
     return {"message": "Simple patients endpoint working", "status": "ok"}
 
 
+@router.get("/auth-test")
+async def list_patients_auth_test(
+    current_user = Depends(require_patients_read)
+):
+    """Patients endpoint with authentication but simple response for testing."""
+    return {"message": "Auth test endpoint working", "user_id": str(current_user.id), "status": "ok"}
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
