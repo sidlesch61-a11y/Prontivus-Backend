@@ -289,7 +289,7 @@ async def list_patients_root(
     current_user = Depends(require_patients_read),
     db: AsyncSession = Depends(get_db_session)
 ):
-    """List patients with pagination and search at root path."""
+    """List patients with pagination and search at root path - handles both root and /list calls."""
     try:
         query = select(Patient).where(Patient.clinic_id == current_user.clinic_id)
         
