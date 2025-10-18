@@ -114,7 +114,7 @@ async def create_prescription(
         first_prescription = result.scalar_one()
         
         # Return response
-        response = PrescriptionResponse.from_orm(first_prescription)
+        response = PrescriptionResponse.model_validate(first_prescription)
         response.patient_name = patient.name
         response.doctor_name = current_user.name
         
@@ -163,7 +163,7 @@ async def list_prescriptions(
         # Get patient names
         response_list = []
         for prescription in prescriptions:
-            response = PrescriptionResponse.from_orm(prescription)
+            response = PrescriptionResponse.model_validate(prescription)
             
             # Get patient name if record_id exists
             if prescription.record_id:
@@ -215,7 +215,7 @@ async def get_prescription(
                 detail="Prescription not found"
             )
         
-        response = PrescriptionResponse.from_orm(prescription)
+        response = PrescriptionResponse.model_validate(prescription)
         
         # Get patient name
         if prescription.record_id:
@@ -275,7 +275,7 @@ async def update_prescription(
         await db.commit()
         await db.refresh(prescription)
         
-        response = PrescriptionResponse.from_orm(prescription)
+        response = PrescriptionResponse.model_validate(prescription)
         
         # Get patient name
         if prescription.record_id:
