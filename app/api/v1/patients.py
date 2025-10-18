@@ -59,6 +59,33 @@ async def list_patients_paginated_test():
     )
 
 
+@router.get("/main-test", response_model=PaginatedResponse)
+async def list_patients_main_test(
+    search: Optional[str] = Query(None, description="Search by name or CPF"),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    current_user = Depends(require_patients_read),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Test endpoint that mimics main endpoint but returns mock data."""
+    # Mock data instead of database query
+    mock_patients = [
+        {"id": "1", "name": "Test Patient 1", "cpf": "12345678901"},
+        {"id": "2", "name": "Test Patient 2", "cpf": "12345678902"}
+    ]
+    
+    total = len(mock_patients)
+    pages = (total + size - 1) // size
+    
+    return PaginatedResponse(
+        items=mock_patients,
+        total=total,
+        page=page,
+        size=size,
+        pages=pages
+    )
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_patients(
     search: Optional[str] = Query(None, description="Search by name or CPF"),
