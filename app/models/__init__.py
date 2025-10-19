@@ -26,6 +26,9 @@ from app.models.database import (
     AuditLog
 )
 
+# Import additional models
+from app.models.print_log import PrintLog
+
 # Define enums that are used across the application
 from enum import Enum
 

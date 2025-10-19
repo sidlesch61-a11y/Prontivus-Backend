@@ -12,6 +12,13 @@ from app.models import (
     InvoiceStatus, PaymentMethod, LicenseStatus, ActivationStatus
 )
 
+# Import new schemas
+from .consultation_finalization import (
+    ConsultationFinalizeRequest, ConsultationFinalizeResponse,
+    ConsultationHistoryItem, ConsultationHistoryResponse,
+    PrintDocumentRequest, PrintConsolidatedRequest
+)
+
 
 # Base schemas
 class BaseSchema(BaseModel):
