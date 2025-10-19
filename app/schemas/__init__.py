@@ -19,6 +19,11 @@ from .consultation_finalization import (
     PrintDocumentRequest, PrintConsolidatedRequest
 )
 
+from .user_management import (
+    UserCreate, UserUpdate, UserResponse, UserRole,
+    TeamMember, RoleInfo, PermissionInfo
+)
+
 
 # Base schemas
 class BaseSchema(BaseModel):
