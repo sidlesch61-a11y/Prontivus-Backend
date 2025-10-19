@@ -381,7 +381,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v2.4-405-fix-complete"
+        "deployment_version": "v2.5-response-model-fix"
     }
 
 

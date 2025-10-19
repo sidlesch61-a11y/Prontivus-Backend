@@ -286,7 +286,7 @@ async def list_patients_final_test(
         raise HTTPException(status_code=500, detail=f"Final test error: {str(e)}")
 
 
-@router.get("/", response_model=dict)
+@router.get("/", response_model=PaginatedResponse)
 async def list_patients_root(
     search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
