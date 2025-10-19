@@ -75,8 +75,9 @@ app.add_middleware(
         "https://prontivus-frontend-ten.vercel.app",
         "https://prontivus.com",
         "https://www.prontivus.com",
-        "https://*.vercel.app",  # Allow all Vercel deployments
-        "https://*.onrender.com"  # Allow all Render deployments
+        "https://prontivus-frontend.vercel.app",
+        "https://prontivus-frontend-git-main.vercel.app",
+        "https://prontivus-frontend-git-develop.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
@@ -129,6 +130,32 @@ async def options_handler(request: Request, path: str):
             "Access-Control-Max-Age": "3600",
         }
     )
+
+# Custom CORS handler for better compatibility
+@app.middleware("http")
+async def cors_handler(request: Request, call_next):
+    """Custom CORS handler to ensure all requests are handled properly."""
+    # Handle preflight requests
+    if request.method == "OPTIONS":
+        response = Response()
+        origin = request.headers.get("origin", "*")
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+        response.headers["Access-Control-Allow-Headers"] = "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
+    
+    # Process the request
+    response = await call_next(request)
+    
+    # Add CORS headers to all responses
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return response
 
 # Request logging middleware
 @app.middleware("http")
