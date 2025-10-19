@@ -23,7 +23,8 @@ from app.models.database import (
     File,
     Invoice,
     License,
-    AuditLog
+    AuditLog,
+    PrintLog
 )
 
 # PrintLog is already imported from print_models in database.py
