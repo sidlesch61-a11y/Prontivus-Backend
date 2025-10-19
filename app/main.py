@@ -321,7 +321,7 @@ app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
 app.include_router(medical_records_lock.router, prefix="/api/v1/medical_records_lock", tags=["Medical Records"])
 app.include_router(medical_records_files.router, prefix="/api/v1/medical_records_files", tags=["Medical Records"])
 app.include_router(prescriptions_basic.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
-app.include_router(prescriptions_advanced.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
+app.include_router(prescriptions_advanced.router, prefix="/api/v1/prescriptions_advanced", tags=["Prescriptions"])
 app.include_router(prescription_verification.router, prefix="/api/v1/prescription_verification", tags=["Public"])
 app.include_router(password_reset.router, prefix="/api/v1/password_reset", tags=["Authentication"])
 app.include_router(reports_advanced.router, prefix="/api/v1/reports_advanced", tags=["Reports"])
@@ -335,8 +335,8 @@ app.include_router(team_management.router, prefix="/api/v1/team_management", tag
 
 # Import new routers
 app.include_router(print.router, prefix="/api/v1/print", tags=["Print Documents"])  # Document printing functionality
-app.include_router(consultation_finalization.router, prefix="/api/v1/consultations", tags=["Consultation Finalization"])  # Consultation finalization and history
-app.include_router(user_management.router, prefix="/api/v1/users", tags=["User Management"])  # User role management and RBAC
+app.include_router(consultation_finalization.router, prefix="/api/v1/consultation_finalization", tags=["Consultation Finalization"])  # Consultation finalization and history
+app.include_router(user_management.router, prefix="/api/v1/user_management", tags=["User Management"])  # User role management and RBAC
 
 # Import exam database router
 from app.api.v1 import exam_database
@@ -378,7 +378,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.2-final-router-conflicts-resolved"
+        "deployment_version": "v3.3-duplicate-prefixes-eliminated"
     }
 
 
