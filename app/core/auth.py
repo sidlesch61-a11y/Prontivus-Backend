@@ -213,6 +213,16 @@ class AuthDependencies:
         
         return module_checker
 
+    @staticmethod
+    def require_admin_access(user: User = Depends(get_current_user)):
+        """Require admin access."""
+        if not hasattr(user, 'role') or user.role != 'admin':
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required"
+            )
+        return user
+
 
 # Tenant middleware
 class TenantMiddleware:
@@ -272,6 +282,7 @@ get_current_user = AuthDependencies.get_current_user
 get_current_clinic = AuthDependencies.get_current_clinic
 get_current_user_response = AuthDependencies.get_current_user_response
 get_license_entitlements = AuthDependencies.get_license_entitlements
+require_admin_access = AuthDependencies.require_admin_access
 
 # Role-based dependencies
 require_admin = AuthDependencies.require_role("admin")
