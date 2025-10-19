@@ -318,54 +318,55 @@ app.include_router(licenses.router, prefix="/api/v1/licenses", tags=["Licenses"]
 app.include_router(sync.router, prefix="/api/v1/sync", tags=["Sync"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
-# Enable advanced TISS endpoints (includes /api/v1/tiss/generate)
-# app.include_router(tiss.router, prefix="/api/v1/tiss_advanced", tags=["TISS"])  # advanced TISS
-# app.include_router(tiss_basic.router, prefix="/api/v1/tiss", tags=["TISS"])  # basic CRUD used by UI
-# app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
-# app.include_router(medical_records_lock.router, prefix="/api/v1/medical_records_lock", tags=["Medical Records"])
-# app.include_router(medical_records_files.router, prefix="/api/v1/medical_records_files", tags=["Medical Records"])
-# app.include_router(prescriptions_basic.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
-# app.include_router(prescriptions_advanced.router, prefix="/api/v1/prescriptions_advanced", tags=["Prescriptions"])
-# app.include_router(prescription_verification.router, prefix="/api/v1/prescription_verification", tags=["Public"])
-# app.include_router(password_reset.router, prefix="/api/v1/password_reset", tags=["Authentication"])
-# app.include_router(reports_advanced.router, prefix="/api/v1/reports_advanced", tags=["Reports"])
-# app.include_router(websocket.router, prefix="/api/v1/websocket", tags=["WebSocket"])  # WebSocket for real-time notifications
-# app.include_router(telemedicine.router, prefix="/api/v1/telemedicine", tags=["Telemedicine"])  # Telemedicine with WebRTC
-# app.include_router(patient_call_system.router, prefix="/api/v1/patient_call", tags=["Patient Call System"])  # Patient calling system with secretary interface
+# Re-enable advanced TISS endpoints
+app.include_router(tiss.router, prefix="/api/v1/tiss_advanced", tags=["TISS"])  # advanced TISS
+app.include_router(tiss_basic.router, prefix="/api/v1/tiss", tags=["TISS"])  # basic CRUD used by UI
+app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
+app.include_router(medical_records_lock.router, prefix="/api/v1/medical_records_lock", tags=["Medical Records"])
+app.include_router(medical_records_files.router, prefix="/api/v1/medical_records_files", tags=["Medical Records"])
+app.include_router(prescriptions_basic.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
+app.include_router(prescriptions_advanced.router, prefix="/api/v1/prescriptions_advanced", tags=["Prescriptions"])
+app.include_router(prescription_verification.router, prefix="/api/v1/prescription_verification", tags=["Public"])
+app.include_router(password_reset.router, prefix="/api/v1/password_reset", tags=["Authentication"])
+app.include_router(reports_advanced.router, prefix="/api/v1/reports_advanced", tags=["Reports"])
+app.include_router(websocket.router, prefix="/api/v1/websocket", tags=["WebSocket"])  # WebSocket for real-time notifications
+app.include_router(telemedicine.router, prefix="/api/v1/telemedicine", tags=["Telemedicine"])  # Telemedicine with WebRTC
+app.include_router(patient_call_system.router, prefix="/api/v1/patient_call", tags=["Patient Call System"])  # Patient calling system with secretary interface
 
-# # Import team management router
-# from app.api.v1 import team_management
-# app.include_router(team_management.router, prefix="/api/v1/team_management", tags=["Team Management"])  # Team management and user roles
+# Re-enable team management router
+from app.api.v1 import team_management
+app.include_router(team_management.router, prefix="/api/v1/team_management", tags=["Team Management"])  # Team management and user roles
 
-# # Import new routers
-# app.include_router(print.router, prefix="/api/v1/print", tags=["Print Documents"])  # Document printing functionality
-# app.include_router(consultation_finalization.router, prefix="/api/v1/consultation_finalization", tags=["Consultation Finalization"])  # Consultation finalization and history
-# app.include_router(user_management.router, prefix="/api/v1/user_management", tags=["User Management"])  # User role management and RBAC
+# Re-enable new routers
+app.include_router(print.router, prefix="/api/v1/print", tags=["Print Documents"])  # Document printing functionality
+app.include_router(consultation_finalization.router, prefix="/api/v1/consultation_finalization", tags=["Consultation Finalization"])  # Consultation finalization and history
+app.include_router(user_management.router, prefix="/api/v1/user_management", tags=["User Management"])  # User role management and RBAC
 
-# # Import exam database router
-# from app.api.v1 import exam_database
-# app.include_router(exam_database.router, prefix="/api/v1/exam_database", tags=["Exam Database"])  # Standardized exam database
+# Re-enable exam database router
+from app.api.v1 import exam_database
+app.include_router(exam_database.router, prefix="/api/v1/exam_database", tags=["Exam Database"])  # Standardized exam database
 
-# # Import insurance pricing router
-# from app.api.v1 import insurance_pricing
-# app.include_router(insurance_pricing.router, prefix="/api/v1/insurance_pricing", tags=["Insurance Pricing"])  # Automatic pricing by insurance
+# Re-enable insurance pricing router
+from app.api.v1 import insurance_pricing
+app.include_router(insurance_pricing.router, prefix="/api/v1/insurance_pricing", tags=["Insurance Pricing"])  # Automatic pricing by insurance
 
-# # Import US medication API router
-# from app.api.v1 import us_medication_api
-# app.include_router(us_medication_api.router, prefix="/api/v1/us_medication", tags=["US Medication API"])  # US pharmaceutical database integration
+# Re-enable US medication API router
+from app.api.v1 import us_medication_api
+app.include_router(us_medication_api.router, prefix="/api/v1/us_medication", tags=["US Medication API"])  # US pharmaceutical database integration
 
-# # Import print API router
-# from app.api.v1 import print_api
-# app.include_router(print_api.router, prefix="/api/v1/print_api", tags=["Print"])  # Direct printing functionality
+# Re-enable print API router
+from app.api.v1 import print_api
+app.include_router(print_api.router, prefix="/api/v1/print_api", tags=["Print"])  # Direct printing functionality
 
-# # Import pricing API router
-# from app.api.v1 import pricing_api
-# app.include_router(pricing_api.router, prefix="/api/v1/pricing_api", tags=["Pricing"])  # Automatic pricing system
+# Re-enable pricing API router
+from app.api.v1 import pricing_api
+app.include_router(pricing_api.router, prefix="/api/v1/pricing_api", tags=["Pricing"])  # Automatic pricing system
 
-# # Import vitals API router
-# from app.api.v1 import vitals_api
-# app.include_router(vitals_api.router, prefix="/api/v1/vitals_api", tags=["Vitals"])  # Patient vitals with height field
+# Re-enable vitals API router
+from app.api.v1 import vitals_api
+app.include_router(vitals_api.router, prefix="/api/v1/vitals_api", tags=["Vitals"])  # Patient vitals with height field
 
+# Keep emergency_fix router commented out as it was temporary
 # app.include_router(emergency_fix.router, prefix="/api/v1/emergency", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 
 # Static files for attachments
@@ -382,7 +383,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.12-test-consultation-mgmt-prefix"
+        "deployment_version": "v3.13-re-enable-all-routers"
     }
 
 
