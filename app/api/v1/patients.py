@@ -276,7 +276,7 @@ async def list_patients_final_test(
         
         # EXACT same serialization as main endpoint
         return PaginatedResponse(
-            items=[PatientResponse.model_validate(patient) for patient in patients],
+            items=[PatientResponse.model_validate(patient).model_dump() for patient in patients],
             total=total,
             page=page,
             size=size,
@@ -330,7 +330,7 @@ async def list_patients_root(
         patients = result.scalars().all()
         
         return PaginatedResponse(
-            items=[PatientResponse.model_validate(patient) for patient in patients],
+            items=[PatientResponse.model_validate(patient).model_dump() for patient in patients],
             total=total,
             page=page,
             size=size,
@@ -384,7 +384,7 @@ async def list_patients(
         patients = result.scalars().all()
         
         return PaginatedResponse(
-            items=[PatientResponse.model_validate(patient) for patient in patients],
+            items=[PatientResponse.model_validate(patient).model_dump() for patient in patients],
             total=total,
             page=page,
             size=size,

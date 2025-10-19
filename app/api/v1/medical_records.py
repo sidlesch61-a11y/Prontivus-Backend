@@ -73,7 +73,7 @@ async def list_medical_records(
             record_responses.append(record_data)
         
         return PaginatedResponse(
-            items=record_responses,
+            items=[record.model_dump() for record in record_responses],
             total=total,
             page=page,
             size=size,
@@ -140,7 +140,7 @@ async def list_medical_records_list(
         record_responses.append(record_data)
     
     return PaginatedResponse(
-        items=record_responses,
+        items=[record.model_dump() for record in record_responses],
         total=total,
         page=page,
         size=size,
