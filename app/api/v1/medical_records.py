@@ -15,10 +15,72 @@ from app.schemas import MedicalRecordCreate, MedicalRecordUpdate, MedicalRecordR
 router = APIRouter()
 
 
-@router.get("/", response_model=dict)
-async def list_medical_records():
-    """Simple root endpoint to test if routing works."""
-    return {"message": "Root medical records endpoint is working", "status": "ok", "version": "v2.3-final-deployment"}
+@router.get("/", response_model=PaginatedResponse)
+async def list_medical_records(
+    patient_id: Optional[str] = Query(None),
+    doctor_id: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    current_user = Depends(require_medical_records_read),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """List medical records with filters and pagination."""
+    try:
+        query = select(MedicalRecord).where(MedicalRecord.clinic_id == current_user.clinic_id)
+        
+        # Apply filters
+        if patient_id:
+            query = query.where(MedicalRecord.patient_id == patient_id)
+        
+        if doctor_id:
+            query = query.where(MedicalRecord.doctor_id == doctor_id)
+        
+        # Get total count
+        count_query = select(MedicalRecord).where(MedicalRecord.clinic_id == current_user.clinic_id)
+        if patient_id:
+            count_query = count_query.where(MedicalRecord.patient_id == patient_id)
+        if doctor_id:
+            count_query = count_query.where(MedicalRecord.doctor_id == doctor_id)
+        
+        total_result = await db.execute(count_query)
+        total = len(total_result.scalars().all())
+        
+        # Apply pagination
+        offset = (page - 1) * size
+        query = query.offset(offset).limit(size).order_by(MedicalRecord.created_at.desc())
+        
+        result = await db.execute(query)
+        records = result.scalars().all()
+        
+        # Get related data
+        record_responses = []
+        for record in records:
+            # Get patient name
+            patient_result = await db.execute(
+                select(Patient.name).where(Patient.id == record.patient_id)
+            )
+            patient_name = patient_result.scalar()
+            
+            # Get doctor name
+            doctor_result = await db.execute(
+                select(User.name).where(User.id == record.doctor_id)
+            )
+            doctor_name = doctor_result.scalar()
+            
+            record_data = MedicalRecordResponse.model_validate(record)
+            record_data.patient_name = patient_name
+            record_data.doctor_name = doctor_name
+            record_responses.append(record_data)
+        
+        return PaginatedResponse(
+            items=record_responses,
+            total=total,
+            page=page,
+            size=size,
+            pages=(total + size - 1) // size
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing medical records: {str(e)}")
 
 
 @router.get("/list", response_model=PaginatedResponse)
