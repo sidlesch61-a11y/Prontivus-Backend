@@ -301,19 +301,19 @@ app.include_router(clinics.router, prefix="/api/v1/clinics", tags=["Clinics"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(patients.router, prefix="/api/v1/patients", tags=["Patients"])
 app.include_router(appointments.router, prefix="/api/v1/appointments", tags=["Appointments"])
-app.include_router(appointment_requests.router, prefix="/api/v1", tags=["Appointment Requests"])  # Patient booking system
+app.include_router(appointment_requests.router, prefix="/api/v1/appointment_requests", tags=["Appointment Requests"])  # Patient booking system
 app.include_router(medical_records.router, prefix="/api/v1/medical_records", tags=["Medical Records"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["Files"])
 app.include_router(invoices.router, prefix="/api/v1/invoices", tags=["Invoices"])
 app.include_router(billing.router, tags=["Billing"])  # NEW: Billing and payment tracking for secretary
-app.include_router(payments.router, prefix="/api/v1", tags=["Payments"])  # NEW: Complete payment integration (PIX, Boleto, PayPal)
+app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])  # NEW: Complete payment integration (PIX, Boleto, PayPal)
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])  # NEW: Complete consultation workflow
-app.include_router(consultation_management.router, prefix="/api/v1", tags=["Consultation Management"])  # NEW: Vitals, attachments, queue, notes
-app.include_router(quick_actions.router, prefix="/api/v1", tags=["Quick Actions"])  # NEW: Prescriptions, certificates, exams, referrals
+app.include_router(consultation_management.router, prefix="/api/v1/consultation_management", tags=["Consultation Management"])  # NEW: Vitals, attachments, queue, notes
+app.include_router(quick_actions.router, prefix="/api/v1/quick_actions", tags=["Quick Actions"])  # NEW: Prescriptions, certificates, exams, referrals
 app.include_router(licenses.router, prefix="/api/v1/licenses", tags=["Licenses"])
 app.include_router(sync.router, prefix="/api/v1/sync", tags=["Sync"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
-app.include_router(reports.router, prefix="/api/v1", tags=["Reports"])
+app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 # Enable advanced TISS endpoints (includes /api/v1/tiss/generate)
 app.include_router(tiss.router, tags=["TISS"])  # advanced TISS
 app.include_router(tiss_basic.router, tags=["TISS"])  # basic CRUD used by UI
@@ -386,7 +386,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v2.7-pagination-fix-complete"
+        "deployment_version": "v2.8-router-conflicts-fix"
     }
 
 
