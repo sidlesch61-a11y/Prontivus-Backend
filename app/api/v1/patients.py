@@ -14,8 +14,13 @@ from app.schemas import PatientCreate, PatientUpdate, PatientResponse, Paginatio
 
 router = APIRouter()
 
-
 @router.get("/test")
+async def test_patients_endpoint():
+    """Test endpoint to verify patients routing is working."""
+    return {"message": "Patients endpoint is working", "status": "ok", "version": "v2.2-definitive-fix"}
+
+
+@router.get("/test2")
 async def test_patients():
     """Test endpoint for patients router."""
     return {"message": "Patients router is working", "status": "ok"}
