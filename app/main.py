@@ -16,7 +16,7 @@ import os
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, request_logger
 from app.db.base import check_database_health
-from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine, patient_call_system, print, consultation_finalization, user_management, test_router  # Complete consultation workflow + billing + extended features + telemedicine + patient call system + print + finalization + user management + test router
+from app.api.v1 import auth, clinics, users, patients, appointments, appointment_requests, medical_records, files, invoices, licenses, sync, webhooks, dashboard, reports, cid10, medical_records_lock, medical_records_files, prescriptions_advanced, prescriptions_basic, prescription_verification, password_reset, reports_advanced, tiss_basic, tiss, websocket, emergency_fix, two_fa, payments, consultations, billing, consultation_management, quick_actions, telemedicine, patient_call_system, print, consultation_finalization, user_management  # Complete consultation workflow + billing + extended features + telemedicine + patient call system + print + finalization + user management
 
 
 # Configure logging
@@ -383,7 +383,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.13-re-enable-all-routers"
+        "deployment_version": "v3.14-cleanup-debug-code"
     }
 
 
