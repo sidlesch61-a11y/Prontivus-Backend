@@ -23,7 +23,7 @@ from app.models.consultation_extended import (
 from app.models.database import Consultation
 from app.models.database import User, Patient, Appointment
 
-router = APIRouter(prefix="/consultation-management", tags=["Consultation Management"])
+router = APIRouter(tags=["Consultation Management"])
 
 # ============================================================================
 # VITALS ENDPOINTS
