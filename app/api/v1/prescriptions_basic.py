@@ -14,7 +14,7 @@ from app.models.database import Prescription as PrescriptionDB, Patient, User
 from app.schemas import PrescriptionCreate, PrescriptionUpdate, PrescriptionResponse
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/prescriptions", tags=["Prescriptions"])
+router = APIRouter(tags=["Prescriptions"])
 
 
 @router.post("/", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)

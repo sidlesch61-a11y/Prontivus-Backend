@@ -16,7 +16,7 @@ from app.core.auth import AuthDependencies
 from app.models.database import Invoice, AuditLog
 from app.services.payment_integrations import payment_service
 
-router = APIRouter(prefix="/payments", tags=["Payments"])
+router = APIRouter(tags=["Payments"])
 
 
 class PIXPaymentRequest(BaseModel):

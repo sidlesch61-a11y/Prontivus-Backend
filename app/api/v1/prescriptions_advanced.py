@@ -12,7 +12,7 @@ from app.core.auth import AuthDependencies
 from app.models.database import Prescription, Patient, User, Clinic
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/prescriptions", tags=["Prescriptions - Advanced"])
+router = APIRouter(tags=["Prescriptions - Advanced"])
 
 
 class PrescriptionGeneratePDFRequest(BaseModel):

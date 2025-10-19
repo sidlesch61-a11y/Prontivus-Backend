@@ -16,7 +16,7 @@ from app.models.database import (
 )
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/reports", tags=["Reports - Advanced"])
+router = APIRouter(tags=["Reports - Advanced"])
 
 
 class PrescriptionTypeStats(BaseModel):

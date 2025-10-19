@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-router = APIRouter(prefix="/patient-call", tags=["Patient Call System"])
+router = APIRouter(tags=["Patient Call System"])
 
 # Simple response model for patient call queue
 class PatientCallResponse(BaseModel):

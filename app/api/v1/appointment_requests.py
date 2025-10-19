@@ -16,7 +16,7 @@ from app.models.database import Patient, User, Clinic, AuditLog
 from app.schemas import BaseSchema
 from pydantic import Field
 
-router = APIRouter(prefix="/appointment-requests", tags=["Appointment Requests"])
+router = APIRouter(tags=["Appointment Requests"])
 
 
 class AppointmentRequestCreate(BaseSchema):
