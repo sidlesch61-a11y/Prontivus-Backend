@@ -310,8 +310,8 @@ app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])
 
-# Keep problematic routers commented out for now
-# app.include_router(consultation_management.router, prefix="/api/v1/consultation-mgmt", tags=["Consultation Management"])  # PROBLEMATIC - 405 errors
+# Test consultation_management router with different prefix
+app.include_router(consultation_management.router, prefix="/api/v1/consultation-mgmt", tags=["Consultation Management"])  # TEST: Try different prefix
 # Re-enable additional working routers
 app.include_router(quick_actions.router, prefix="/api/v1/quick_actions", tags=["Quick Actions"])
 app.include_router(licenses.router, prefix="/api/v1/licenses", tags=["Licenses"])
@@ -382,7 +382,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.11-re-enable-working-routers"
+        "deployment_version": "v3.12-test-consultation-mgmt-prefix"
     }
 
 
