@@ -28,7 +28,7 @@ from ..services.queue_service import QueueService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/waiting_queue", tags=["waiting_queue"])
+router = APIRouter(tags=["waiting_queue"])
 
 # WebSocket connection manager
 websocket_service = WebSocketService()

@@ -23,7 +23,7 @@ from ..db.session import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/ethical_locks", tags=["ethical_locks"])
+router = APIRouter(tags=["ethical_locks"])
 
 @router.post("/acquire", response_model=LockResponse)
 async def acquire_lock(

@@ -21,7 +21,7 @@ from app.models.tiss import (
     TISSLogLevel,
 )
 
-router = APIRouter(prefix="/api/v1/tiss", tags=["TISS - Basic"])
+router = APIRouter(tags=["TISS - Basic"])
 
 
 @router.get("/providers", response_model=List[TISSProviderResponse])

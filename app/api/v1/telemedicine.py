@@ -16,7 +16,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/telemed", tags=["telemedicine"])
+router = APIRouter(tags=["telemedicine"])
 
 @router.get("/test")
 async def test_telemed_endpoint():

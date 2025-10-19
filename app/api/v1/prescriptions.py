@@ -29,7 +29,7 @@ from ..services.qr_generator import QRCodeGenerator
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/prescriptions", tags=["prescriptions"])
+router = APIRouter(tags=["prescriptions"])
 
 @router.post("/", response_model=PrescriptionResponse)
 async def create_prescription(

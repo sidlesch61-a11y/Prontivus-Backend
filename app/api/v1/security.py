@@ -25,7 +25,7 @@ from ..db.session import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["security"])
+router = APIRouter(tags=["security"])
 
 # 2FA Endpoints
 @router.post("/auth/2fa/setup", response_model=TwoFASetupResponse)

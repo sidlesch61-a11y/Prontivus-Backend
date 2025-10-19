@@ -27,7 +27,7 @@ from app.models.database import Patient, User, Consultation
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/tiss", tags=["tiss"])
+router = APIRouter(tags=["tiss"])
 
 @router.get("/providers", response_model=List[TISSProviderResponse])
 async def list_tiss_providers(

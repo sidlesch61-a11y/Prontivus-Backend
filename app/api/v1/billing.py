@@ -14,7 +14,7 @@ from app.db.session import get_db_session
 from app.core.auth import AuthDependencies
 from app.models.database import AuditLog
 
-router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
+router = APIRouter(tags=["billing"])
 
 
 # Pydantic models

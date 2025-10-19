@@ -24,7 +24,7 @@ from app.models.ai_consultation import (
 from app.models.database import User, Appointment, MedicalRecord
 from app.workers.tasks import transcribe_and_summarize_task
 
-router = APIRouter(prefix="/api/v1/consultations", tags=["AI Consultation"])
+router = APIRouter(tags=["AI Consultation"])
 security = HTTPBearer()
 
 # S3/MinIO configuration

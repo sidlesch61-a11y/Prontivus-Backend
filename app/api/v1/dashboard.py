@@ -12,7 +12,7 @@ from app.core.auth import AuthDependencies
 from app.db.session import get_db_session
 from app.models.database import Patient, Appointment, Invoice, MedicalRecord
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(tags=["dashboard"])
 
 # Dashboard stats are available to all authenticated users
 

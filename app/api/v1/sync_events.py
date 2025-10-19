@@ -23,7 +23,7 @@ from ..db.session import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/sync", tags=["sync"])
+router = APIRouter(tags=["sync"])
 
 @router.post("/events", response_model=SyncEventsResponse)
 async def process_sync_events(
