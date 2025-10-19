@@ -305,7 +305,7 @@ app.include_router(appointment_requests.router, prefix="/api/v1/appointment_requ
 app.include_router(medical_records.router, prefix="/api/v1/medical_records", tags=["Medical Records"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["Files"])
 app.include_router(invoices.router, prefix="/api/v1/invoices", tags=["Invoices"])
-app.include_router(billing.router, tags=["Billing"])  # NEW: Billing and payment tracking for secretary
+app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])  # NEW: Billing and payment tracking for secretary
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])  # NEW: Complete payment integration (PIX, Boleto, PayPal)
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])  # NEW: Complete consultation workflow
 app.include_router(consultation_management.router, prefix="/api/v1/consultation_management", tags=["Consultation Management"])  # NEW: Vitals, attachments, queue, notes
@@ -315,8 +315,8 @@ app.include_router(sync.router, prefix="/api/v1/sync", tags=["Sync"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 # Enable advanced TISS endpoints (includes /api/v1/tiss/generate)
-app.include_router(tiss.router, tags=["TISS"])  # advanced TISS
-app.include_router(tiss_basic.router, tags=["TISS"])  # basic CRUD used by UI
+app.include_router(tiss.router, prefix="/api/v1/tiss_advanced", tags=["TISS"])  # advanced TISS
+app.include_router(tiss_basic.router, prefix="/api/v1/tiss", tags=["TISS"])  # basic CRUD used by UI
 app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
 app.include_router(medical_records_lock.router, prefix="/api/v1/medical_records_lock", tags=["Medical Records"])
 app.include_router(medical_records_files.router, prefix="/api/v1/medical_records_files", tags=["Medical Records"])
@@ -325,8 +325,8 @@ app.include_router(prescriptions_advanced.router, prefix="/api/v1/prescriptions_
 app.include_router(prescription_verification.router, prefix="/api/v1/prescription_verification", tags=["Public"])
 app.include_router(password_reset.router, prefix="/api/v1/password_reset", tags=["Authentication"])
 app.include_router(reports_advanced.router, prefix="/api/v1/reports_advanced", tags=["Reports"])
-app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time notifications
-app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
+app.include_router(websocket.router, prefix="/api/v1/websocket", tags=["WebSocket"])  # WebSocket for real-time notifications
+app.include_router(telemedicine.router, prefix="/api/v1/telemedicine", tags=["Telemedicine"])  # Telemedicine with WebRTC
 app.include_router(patient_call_system.router, prefix="/api/v1/patient_call", tags=["Patient Call System"])  # Patient calling system with secretary interface
 
 # Import team management router
@@ -340,15 +340,15 @@ app.include_router(user_management.router, prefix="/api/v1/user_management", tag
 
 # Import exam database router
 from app.api.v1 import exam_database
-app.include_router(exam_database.router, tags=["Exam Database"])  # Standardized exam database
+app.include_router(exam_database.router, prefix="/api/v1/exam_database", tags=["Exam Database"])  # Standardized exam database
 
 # Import insurance pricing router
 from app.api.v1 import insurance_pricing
-app.include_router(insurance_pricing.router, tags=["Insurance Pricing"])  # Automatic pricing by insurance
+app.include_router(insurance_pricing.router, prefix="/api/v1/insurance_pricing", tags=["Insurance Pricing"])  # Automatic pricing by insurance
 
 # Import US medication API router
 from app.api.v1 import us_medication_api
-app.include_router(us_medication_api.router, tags=["US Medication API"])  # US pharmaceutical database integration
+app.include_router(us_medication_api.router, prefix="/api/v1/us_medication", tags=["US Medication API"])  # US pharmaceutical database integration
 
 # Import print API router
 from app.api.v1 import print_api
@@ -378,7 +378,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.4-test-consultation-management-router"
+        "deployment_version": "v3.5-fix-all-router-prefixes"
     }
 
 
