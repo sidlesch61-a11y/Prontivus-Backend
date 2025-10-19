@@ -327,7 +327,7 @@ app.include_router(password_reset.router, prefix="/api/v1", tags=["Authenticatio
 app.include_router(reports_advanced.router, prefix="/api/v1", tags=["Reports"])
 app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time notifications
 app.include_router(telemedicine.router, tags=["Telemedicine"])  # Telemedicine with WebRTC
-app.include_router(patient_call_system.router, prefix="/api/v1", tags=["Patient Call System"])  # Patient calling system with secretary interface
+app.include_router(patient_call_system.router, prefix="/api/v1/patient_call", tags=["Patient Call System"])  # Patient calling system with secretary interface
 
 # Import team management router
 from app.api.v1 import team_management
@@ -386,7 +386,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v2.8-router-conflicts-fix"
+        "deployment_version": "v2.9-consultation-management-fix"
     }
 
 
