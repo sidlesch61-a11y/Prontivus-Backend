@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from datetime import datetime
 import uuid
 
-from app.core.auth import get_current_user, require_medical_records_write
+from app.core.auth import get_current_user, require_medical_records_write, require_medical_records_read
 from app.db.session import get_db_session
 from app.models import Consultation, Patient, User
 from app.schemas import ConsultationFinalizeRequest
