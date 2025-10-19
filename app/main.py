@@ -308,7 +308,7 @@ app.include_router(invoices.router, prefix="/api/v1/invoices", tags=["Invoices"]
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])  # NEW: Billing and payment tracking for secretary
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])  # NEW: Complete payment integration (PIX, Boleto, PayPal)
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])  # NEW: Complete consultation workflow
-app.include_router(consultation_management.router, prefix="/api/v1/consultation_management", tags=["Consultation Management"])  # NEW: Vitals, attachments, queue, notes
+app.include_router(consultation_management.router, prefix="/api/v1/consultation-mgmt", tags=["Consultation Management"])  # NEW: Vitals, attachments, queue, notes
 app.include_router(quick_actions.router, prefix="/api/v1/quick_actions", tags=["Quick Actions"])  # NEW: Prescriptions, certificates, exams, referrals
 app.include_router(licenses.router, prefix="/api/v1/licenses", tags=["Licenses"])
 app.include_router(sync.router, prefix="/api/v1/sync", tags=["Sync"])
@@ -378,7 +378,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.5-fix-all-router-prefixes"
+        "deployment_version": "v3.6-test-consultation-mgmt-prefix"
     }
 
 
