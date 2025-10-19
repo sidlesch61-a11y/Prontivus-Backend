@@ -25,6 +25,11 @@ from app.models.database import User, Patient, Appointment
 
 router = APIRouter(tags=["Consultation Management"])
 
+@router.get("/test")
+async def test_consultation_management():
+    """Test endpoint to verify consultation management router is working."""
+    return {"message": "Consultation management router is working", "status": "ok"}
+
 # ============================================================================
 # VITALS ENDPOINTS
 # ============================================================================
