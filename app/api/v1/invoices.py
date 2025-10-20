@@ -15,6 +15,74 @@ from app.schemas import InvoiceCreate, InvoiceResponse, PaginationParams, Pagina
 router = APIRouter()
 
 
+@router.get("/list", response_model=PaginatedResponse)
+async def list_invoices_with_list(
+    patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    current_user = Depends(require_billing_read),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """List invoices with filters and pagination."""
+    try:
+        query = select(Invoice).where(Invoice.clinic_id == current_user.clinic_id)
+        
+        # Apply filters
+        if patient_id:
+            query = query.where(Invoice.patient_id == patient_id)
+        
+        if status:
+            query = query.where(cast(Invoice.status, String) == status)
+        
+        # Get total count
+        count_query = select(Invoice).where(Invoice.clinic_id == current_user.clinic_id)
+        if patient_id:
+            count_query = count_query.where(Invoice.patient_id == patient_id)
+        if status:
+            count_query = count_query.where(cast(Invoice.status, String) == status)
+        
+        total_result = await db.execute(count_query)
+        total = len(total_result.scalars().all())
+        
+        # Apply pagination
+        offset = (page - 1) * size
+        query = query.offset(offset).limit(size).order_by(Invoice.created_at.desc())
+        
+        result = await db.execute(query)
+        invoices = result.scalars().all()
+        
+        # Get related data
+        invoice_responses = []
+        for invoice in invoices:
+            # Get patient name if patient_id exists
+            patient_name = None
+            if invoice.patient_id:
+                patient_result = await db.execute(
+                    select(Patient.name).where(Patient.id == invoice.patient_id)
+                )
+                patient_name = patient_result.scalar()
+            
+            invoice_data = InvoiceResponse.model_validate(invoice)
+            invoice_data.patient_name = patient_name
+            invoice_responses.append(invoice_data)
+        
+        return PaginatedResponse(
+            items=invoice_responses,
+            total=total,
+            page=page,
+            size=size,
+            pages=(total + size - 1) // size
+        )
+    except Exception as e:
+        import logging
+        logging.error(f"Error in list_invoices: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load invoices: {str(e)}"
+        )
+
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_invoices(
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
