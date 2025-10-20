@@ -5,13 +5,13 @@ Allows patients to request appointments (pending staff approval)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
 
 from app.db.session import get_db_session
-from app.core.auth import AuthDependencies
+from app.core.auth import get_current_user
 from app.models.database import Patient, User, Clinic, AuditLog
 from app.schemas import BaseSchema
 from pydantic import Field
@@ -98,7 +98,7 @@ class AppointmentRequest(SQLModel, table=True):
 @router.post("/", response_model=AppointmentRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_appointment_request(
     request_data: AppointmentRequestCreate,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -215,7 +215,7 @@ async def create_appointment_request(
 async def list_appointment_requests_with_list(
     status_filter: Optional[str] = Query(None, description="Filter by status (pending/approved/rejected/cancelled)"),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -320,7 +320,7 @@ async def list_appointment_requests_with_list(
 async def list_appointment_requests(
     status_filter: Optional[str] = Query(None, description="Filter by status (pending/approved/rejected/cancelled)"),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -421,11 +421,106 @@ async def list_appointment_requests(
         )
 
 
+@router.get("/stats", response_model=dict)
+async def get_appointment_request_stats(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get appointment request statistics."""
+    try:
+        # Get total requests
+        total_query = select(func.count(AppointmentRequest.id)).where(
+            AppointmentRequest.clinic_id == current_user.clinic_id
+        )
+        total_result = await db.execute(total_query)
+        total_requests = total_result.scalar() or 0
+        
+        # Get pending requests
+        pending_query = select(func.count(AppointmentRequest.id)).where(
+            and_(
+                AppointmentRequest.clinic_id == current_user.clinic_id,
+                AppointmentRequest.status == "pending"
+            )
+        )
+        pending_result = await db.execute(pending_query)
+        pending_requests = pending_result.scalar() or 0
+        
+        # Get approved requests
+        approved_query = select(func.count(AppointmentRequest.id)).where(
+            and_(
+                AppointmentRequest.clinic_id == current_user.clinic_id,
+                AppointmentRequest.status == "approved"
+            )
+        )
+        approved_result = await db.execute(approved_query)
+        approved_requests = approved_result.scalar() or 0
+        
+        # Get rejected requests
+        rejected_query = select(func.count(AppointmentRequest.id)).where(
+            and_(
+                AppointmentRequest.clinic_id == current_user.clinic_id,
+                AppointmentRequest.status == "rejected"
+            )
+        )
+        rejected_result = await db.execute(rejected_query)
+        rejected_requests = rejected_result.scalar() or 0
+        
+        # Get today's requests
+        today = datetime.now().date()
+        today_query = select(func.count(AppointmentRequest.id)).where(
+            and_(
+                AppointmentRequest.clinic_id == current_user.clinic_id,
+                func.date(AppointmentRequest.requested_at) == today
+            )
+        )
+        today_result = await db.execute(today_query)
+        requests_today = today_result.scalar() or 0
+        
+        # Get pending today
+        pending_today_query = select(func.count(AppointmentRequest.id)).where(
+            and_(
+                AppointmentRequest.clinic_id == current_user.clinic_id,
+                AppointmentRequest.status == "pending",
+                func.date(AppointmentRequest.requested_at) == today
+            )
+        )
+        pending_today_result = await db.execute(pending_today_query)
+        pending_today = pending_today_result.scalar() or 0
+        
+        # Get approved this week
+        week_start = today - timedelta(days=today.weekday())
+        approved_week_query = select(func.count(AppointmentRequest.id)).where(
+            and_(
+                AppointmentRequest.clinic_id == current_user.clinic_id,
+                AppointmentRequest.status == "approved",
+                func.date(AppointmentRequest.requested_at) >= week_start
+            )
+        )
+        approved_week_result = await db.execute(approved_week_query)
+        approved_this_week = approved_week_result.scalar() or 0
+        
+        return {
+            "total_requests": total_requests,
+            "pending_requests": pending_requests,
+            "approved_requests": approved_requests,
+            "rejected_requests": rejected_requests,
+            "requests_today": requests_today,
+            "pending_today": pending_today,
+            "approved_this_week": approved_this_week
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting stats: {str(e)}"
+        )
+
+
 @router.post("/{request_id}/review", response_model=AppointmentRequestResponse)
 async def review_appointment_request(
     request_id: str,
     review_data: AppointmentRequestReview,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -616,7 +711,7 @@ async def review_appointment_request(
 @router.delete("/{request_id}")
 async def cancel_appointment_request(
     request_id: str,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """
@@ -695,7 +790,7 @@ async def cancel_appointment_request(
 
 @router.get("/stats")
 async def get_appointment_request_stats(
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Get statistics for appointment requests."""
