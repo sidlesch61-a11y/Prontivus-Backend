@@ -21,6 +21,66 @@ async def test_prescriptions():
     """Test endpoint to verify router is working."""
     return {"message": "Prescriptions router is working", "status": "ok"}
 
+@router.get("/list")
+async def list_prescriptions_with_list(
+    search: Optional[str] = Query(None, description="Search by medication or patient name"),
+    patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
+    page: int = Query(1, ge=1),
+    size: int = Query(50, ge=1, le=100),
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """List prescriptions with /list endpoint for frontend compatibility."""
+    try:
+        query = select(PrescriptionDB).where(PrescriptionDB.clinic_id == current_user.clinic_id)
+        
+        if patient_id:
+            query = query.where(PrescriptionDB.record_id == patient_id)
+        
+        if search:
+            query = query.where(
+                or_(
+                    PrescriptionDB.medication_name.ilike(f"%{search}%"),
+                    PrescriptionDB.notes.ilike(f"%{search}%")
+                )
+            )
+        
+        query = query.order_by(PrescriptionDB.created_at.desc())
+        query = query.offset((page - 1) * size).limit(size)
+        
+        result = await db.execute(query)
+        prescriptions = result.scalars().all()
+        
+        # Convert to simple dict format for frontend compatibility
+        prescription_list = []
+        for prescription in prescriptions:
+            prescription_list.append({
+                "id": str(prescription.id),
+                "patient_id": str(prescription.patient_id),
+                "doctor_id": str(prescription.doctor_id),
+                "medication_name": prescription.medication_name,
+                "dosage": prescription.dosage,
+                "frequency": prescription.frequency,
+                "duration": prescription.duration,
+                "notes": prescription.notes,
+                "created_at": prescription.created_at.isoformat() if prescription.created_at else None,
+                "updated_at": prescription.updated_at.isoformat() if prescription.updated_at else None
+            })
+        
+        return {
+            "items": prescription_list,
+            "total": len(prescription_list),
+            "page": page,
+            "size": size,
+            "pages": 1  # Simplified for now
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list prescriptions: {str(e)}"
+        )
+
 
 @router.post("/", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_prescription(

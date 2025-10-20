@@ -383,7 +383,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.24-remove-prescriptions-response-model"
+        "deployment_version": "v3.25-add-prescriptions-list-endpoint"
     }
 
 
