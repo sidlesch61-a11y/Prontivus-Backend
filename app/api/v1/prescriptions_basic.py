@@ -16,6 +16,11 @@ from pydantic import BaseModel
 
 router = APIRouter(tags=["Prescriptions"])
 
+@router.get("/test")
+async def test_prescriptions():
+    """Test endpoint to verify router is working."""
+    return {"message": "Prescriptions router is working", "status": "ok"}
+
 
 @router.post("/", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_prescription(
