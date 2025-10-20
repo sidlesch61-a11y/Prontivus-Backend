@@ -366,6 +366,10 @@ app.include_router(pricing_api.router, prefix="/api/v1/pricing_api", tags=["Pric
 from app.api.v1 import vitals_api
 app.include_router(vitals_api.router, prefix="/api/v1/vitals_api", tags=["Vitals"])  # Patient vitals with height field
 
+# Re-enable PDF generation API router
+from app.api.v1 import pdf_generation
+app.include_router(pdf_generation.router, prefix="/api/v1/pdf", tags=["PDF Generation"])  # PDF generation with JSON responses
+
 # Keep emergency_fix router commented out as it was temporary
 # app.include_router(emergency_fix.router, prefix="/api/v1/emergency", tags=["Emergency"])  # TEMPORARY FIX - DELETE AFTER USE
 

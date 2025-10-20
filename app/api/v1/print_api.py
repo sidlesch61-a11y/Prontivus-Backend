@@ -71,12 +71,15 @@ async def print_document(
     - guia_sadt: SADT guide
     - justificativa_exames: Exam justification
     - encaminhamento: Medical referral
+    - guia_exame: Exam guide (NEW)
+    - encaminhamento_especialista: Specialist referral (NEW)
     """
     try:
         # Validate document type
         valid_types = [
             "receita_simples", "receita_azul", "atestado", 
-            "guia_sadt", "justificativa_exames", "encaminhamento"
+            "guia_sadt", "justificativa_exames", "encaminhamento",
+            "guia_exame", "encaminhamento_especialista"  # Added new types
         ]
         if document_type not in valid_types:
             raise HTTPException(
@@ -163,7 +166,12 @@ async def print_document(
                 io.BytesIO(pdf_content),
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition": f"attachment; filename={document_type}_{consultation_id}.pdf"
+                    "Content-Disposition": f"attachment; filename={document_type}_{consultation_id}.pdf",
+                    "Content-Type": "application/pdf",
+                    "Cache-Control": "no-cache",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization"
                 }
             )
         

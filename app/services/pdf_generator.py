@@ -165,7 +165,8 @@ class PDFGenerator:
         # Add all document types
         document_types = [
             "receita_simples", "receita_azul", "atestado", 
-            "guia_sadt", "justificativa_exames", "encaminhamento"
+            "guia_sadt", "justificativa_exames", "encaminhamento",
+            "guia_exame", "encaminhamento_especialista"
         ]
         
         for doc_type in document_types:
@@ -271,6 +272,10 @@ class PDFGenerator:
             elements.extend(self._create_exam_justification_content(consultation))
         elif document_type == "encaminhamento":
             elements.extend(self._create_referral_content(consultation))
+        elif document_type == "guia_exame":
+            elements.extend(self._create_exam_guide_content(consultation))
+        elif document_type == "encaminhamento_especialista":
+            elements.extend(self._create_specialist_referral_content(consultation))
         
         return elements
     
@@ -406,6 +411,66 @@ class PDFGenerator:
         
         return elements
     
+    def _create_exam_guide_content(self, consultation: Consultation) -> list:
+        """Create exam guide content."""
+        elements = []
+        
+        elements.append(Paragraph("<b>GUIA DE EXAMES</b>", self.styles['Heading3']))
+        elements.append(Spacer(1, 10))
+        
+        elements.append(Paragraph(
+            "Guia médico para realização de exames laboratoriais e de imagem, "
+            "conforme necessidade clínica identificada durante a consulta.",
+            self.styles['Content']
+        ))
+        
+        elements.append(Spacer(1, 10))
+        
+        if consultation.diagnosis:
+            elements.append(Paragraph(f"<b>Hipótese Diagnóstica:</b> {consultation.diagnosis}", self.styles['Content']))
+        
+        if consultation.treatment_plan:
+            elements.append(Paragraph(f"<b>Exames Solicitados:</b> {consultation.treatment_plan}", self.styles['Content']))
+        
+        elements.append(Spacer(1, 10))
+        
+        elements.append(Paragraph(
+            "Este guia é válido por 30 dias a partir da data de emissão.",
+            self.styles['Content']
+        ))
+        
+        return elements
+    
+    def _create_specialist_referral_content(self, consultation: Consultation) -> list:
+        """Create specialist referral content."""
+        elements = []
+        
+        elements.append(Paragraph("<b>ENCAMINHAMENTO PARA ESPECIALISTA</b>", self.styles['Heading3']))
+        elements.append(Spacer(1, 10))
+        
+        elements.append(Paragraph(
+            "Encaminho o(a) paciente para avaliação especializada, "
+            "conforme necessidade identificada durante a consulta médica.",
+            self.styles['Content']
+        ))
+        
+        elements.append(Spacer(1, 10))
+        
+        if consultation.diagnosis:
+            elements.append(Paragraph(f"<b>Motivo do Encaminhamento:</b> {consultation.diagnosis}", self.styles['Content']))
+        
+        if consultation.treatment_plan:
+            elements.append(Paragraph(f"<b>Especialidade Solicitada:</b> {consultation.treatment_plan}", self.styles['Content']))
+        
+        elements.append(Spacer(1, 10))
+        
+        elements.append(Paragraph(
+            "Este encaminhamento é válido por 60 dias a partir da data de emissão.",
+            self.styles['Content']
+        ))
+        
+        return elements
+    
     def _create_doctor_signature(self, doctor: User, clinic: Clinic) -> list:
         """Create doctor signature section."""
         elements = []
@@ -436,6 +501,8 @@ class PDFGenerator:
             "atestado": "Atestado Médico",
             "guia_sadt": "Guia SADT",
             "justificativa_exames": "Justificativa de Exames",
-            "encaminhamento": "Encaminhamento Médico"
+            "encaminhamento": "Encaminhamento Médico",
+            "guia_exame": "Guia de Exames",
+            "encaminhamento_especialista": "Encaminhamento para Especialista"
         }
         return titles.get(document_type, "Documento Médico")
