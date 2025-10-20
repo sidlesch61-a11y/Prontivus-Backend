@@ -383,7 +383,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.21-use-prescriptions-basic-router"
+        "deployment_version": "v3.22-fix-prescriptions-basic-auth"
     }
 
 

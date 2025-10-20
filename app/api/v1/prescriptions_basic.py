@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 
 from app.db.session import get_db_session
-from app.core.auth import AuthDependencies
+from app.core.auth import get_current_user
 from app.models.database import Prescription as PrescriptionDB, Patient, User
 from app.schemas import PrescriptionCreate, PrescriptionUpdate, PrescriptionResponse
 from pydantic import BaseModel
@@ -20,7 +20,7 @@ router = APIRouter(tags=["Prescriptions"])
 @router.post("/", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_prescription(
     prescription_data: PrescriptionCreate,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create a new basic prescription."""
@@ -136,7 +136,7 @@ async def list_prescriptions(
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=100),
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """List prescriptions with optional filters."""
@@ -196,7 +196,7 @@ async def list_prescriptions(
 @router.get("/{prescription_id}", response_model=PrescriptionResponse)
 async def get_prescription(
     prescription_id: str,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Get a prescription by ID."""
@@ -248,7 +248,7 @@ async def get_prescription(
 async def update_prescription(
     prescription_id: str,
     update_data: PrescriptionUpdate,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Update a prescription."""
@@ -308,7 +308,7 @@ async def update_prescription(
 @router.delete("/{prescription_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_prescription(
     prescription_id: str,
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Delete a prescription."""
