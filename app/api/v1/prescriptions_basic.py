@@ -84,16 +84,24 @@ async def list_prescriptions_with_list(
 
 @router.post("/", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_prescription(
-    prescription_data: PrescriptionCreate,
+    prescription_data: dict,
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session)
 ):
     """Create a new basic prescription."""
     try:
+        # Extract patient_id from dict
+        patient_id = prescription_data.get('patient_id')
+        if not patient_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="patient_id is required"
+            )
+        
         # Verify patient exists
         patient_result = await db.execute(
             select(Patient).where(
-                Patient.id == prescription_data.patient_id,
+                Patient.id == patient_id,
                 Patient.clinic_id == current_user.clinic_id
             )
         )
@@ -110,13 +118,13 @@ async def create_prescription(
         prescription_ids = []
         
         # Check if this has medications list (new format)
-        if hasattr(prescription_data, 'medications') and prescription_data.medications:
+        if 'medications' in prescription_data and prescription_data['medications']:
             # New format: array of medications
             # Use RAW SQL to insert WITHOUT record_id field (DB constraint workaround)
             from sqlalchemy import text
             import uuid as uuid_module
             
-            for medication in prescription_data.medications:
+            for medication in prescription_data['medications']:
                 prescription_id = uuid_module.uuid4()
                 now = datetime.now()
                 
@@ -130,11 +138,11 @@ async def create_prescription(
                     """),
                     {
                         "id": str(prescription_id),
-                        "medication_name": medication.medication_name,
-                        "dosage": medication.dosage,
-                        "frequency": medication.frequency or "",
-                        "duration": medication.duration or "",
-                        "notes": prescription_data.notes or "",
+                        "medication_name": medication.get('medication_name', medication.get('name', '')),
+                        "dosage": medication.get('dosage'),
+                        "frequency": medication.get('frequency') or "",
+                        "duration": medication.get('duration') or "",
+                        "notes": prescription_data.get('notes') or "",
                         "clinic_id": str(current_user.clinic_id),
                         "created_at": now,
                         "updated_at": now
@@ -158,11 +166,11 @@ async def create_prescription(
                 """),
                 {
                     "id": str(prescription_id),
-                    "medication_name": prescription_data.medication_name,
-                    "dosage": prescription_data.dosage,
-                    "frequency": prescription_data.frequency or "",
-                    "duration": prescription_data.duration or "",
-                    "notes": prescription_data.notes or "",
+                    "medication_name": prescription_data.get('medication_name', ''),
+                    "dosage": prescription_data.get('dosage'),
+                    "frequency": prescription_data.get('frequency') or "",
+                    "duration": prescription_data.get('duration') or "",
+                    "notes": prescription_data.get('notes') or "",
                     "clinic_id": str(current_user.clinic_id),
                     "created_at": now,
                     "updated_at": now
