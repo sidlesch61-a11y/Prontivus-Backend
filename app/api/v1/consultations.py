@@ -231,7 +231,7 @@ async def create_consultation(
         )
 
 
-@router.get("/", response_model=List[ConsultationResponse])
+@router.get("/list", response_model=List[ConsultationResponse])
 async def list_consultations(
     appointment_id: Optional[str] = Query(None, description="Filter by appointment ID"),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
