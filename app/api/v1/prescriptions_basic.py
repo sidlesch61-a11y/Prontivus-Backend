@@ -56,8 +56,8 @@ async def list_prescriptions_with_list(
         for prescription in prescriptions:
             prescription_list.append({
                 "id": str(prescription.id),
-                "patient_id": str(prescription.patient_id),
-                "doctor_id": str(prescription.doctor_id),
+                "record_id": str(prescription.record_id) if prescription.record_id else None,
+                "clinic_id": str(prescription.clinic_id),
                 "medication_name": prescription.medication_name,
                 "dosage": prescription.dosage,
                 "frequency": prescription.frequency,
