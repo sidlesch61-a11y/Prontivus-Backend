@@ -125,14 +125,23 @@ async def generate_pdf(
             )
         
         # Generate PDF
-        pdf_generator = PDFGenerator()
-        pdf_content = await pdf_generator.generate_document(
-            document_type=document_type,
-            consultation=consultation,
-            patient=patient,
-            doctor=doctor,
-            clinic=clinic
-        )
+        try:
+            pdf_generator = PDFGenerator()
+            pdf_content = await pdf_generator.generate_document(
+                document_type=document_type,
+                consultation=consultation,
+                patient=patient,
+                doctor=doctor,
+                clinic=clinic
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"PDF generation error: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao gerar PDF: {str(e)}"
+            )
         
         # Create filename
         filename = f"{document_type}_{patient.name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
