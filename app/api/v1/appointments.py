@@ -16,7 +16,7 @@ from app.schemas import AppointmentCreate, AppointmentUpdate, AppointmentRespons
 
 router = APIRouter()
 
-@router.get("/", response_model=PaginatedResponse)
+@router.get("/list", response_model=PaginatedResponse)
 async def list_appointments(
     day: Optional[date] = Query(None, description="Filter by specific day"),
     doctor_id: Optional[str] = Query(None, description="Filter by doctor ID"),
