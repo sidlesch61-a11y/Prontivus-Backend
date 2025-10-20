@@ -127,7 +127,7 @@ async def generate_pdf(
         # Generate PDF
         pdf_generator = PDFGenerator()
         pdf_content = await pdf_generator.generate_document(
-            document_type=request.document_type,
+            document_type=document_type,
             consultation=consultation,
             patient=patient,
             doctor=doctor,
@@ -135,10 +135,10 @@ async def generate_pdf(
         )
         
         # Create filename
-        filename = f"{request.document_type}_{patient.name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"{document_type}_{patient.name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
         # Prepare response based on output type
-        if request.output_type == "base64":
+        if output_type == "base64":
             # Convert PDF to base64 for frontend consumption
             pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
             
