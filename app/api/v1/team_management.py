@@ -11,21 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from pydantic import BaseModel, EmailStr
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, require_admin
 from app.db.session import get_db_session
 from app.models import User, Clinic, AuditLog
 
 router = APIRouter()
 
 
-def require_admin(current_user = Depends(get_current_user)):
-    """Require admin role for team management."""
-    if not current_user or getattr(current_user, 'role', '') != 'admin':
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso negado. Apenas administradores podem gerenciar a equipe."
-        )
-    return current_user
+# Use the proper require_admin dependency from auth module
 
 
 class UserCreateRequest(BaseModel):
