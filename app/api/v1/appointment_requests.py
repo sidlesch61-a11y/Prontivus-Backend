@@ -211,6 +211,111 @@ async def create_appointment_request(
         )
 
 
+@router.get("/list", response_model=List[AppointmentRequestResponse])
+async def list_appointment_requests_with_list(
+    status_filter: Optional[str] = Query(None, description="Filter by status (pending/approved/rejected/cancelled)"),
+    patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
+    current_user = Depends(AuthDependencies.get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    List appointment requests.
+    
+    - Patients can only see their own requests
+    - Staff can see all requests for their clinic
+    """
+    try:
+        query = select(AppointmentRequest).where(AppointmentRequest.clinic_id == current_user.clinic_id)
+        
+        # If user is patient, only show their requests
+        user_role = getattr(current_user, "role", "").lower()
+        if user_role == "patient":
+            # Find patient record for this user
+            patient_result = await db.execute(
+                select(Patient).where(
+                    Patient.email == current_user.email,
+                    Patient.clinic_id == current_user.clinic_id
+                )
+            )
+            patient = patient_result.scalar_one_or_none()
+            if patient:
+                query = query.where(AppointmentRequest.patient_id == patient.id)
+            else:
+                return []  # Patient record not found
+        
+        # Apply filters
+        if status_filter:
+            query = query.where(AppointmentRequest.status == status_filter)
+        
+        if patient_id:
+            query = query.where(AppointmentRequest.patient_id == patient_id)
+        
+        query = query.order_by(AppointmentRequest.requested_at.desc())
+        
+        result = await db.execute(query)
+        requests = result.scalars().all()
+        
+        # Build responses
+        response_list = []
+        for req in requests:
+            # Get patient name
+            patient_result = await db.execute(
+                select(Patient).where(Patient.id == req.patient_id)
+            )
+            patient = patient_result.scalar_one_or_none()
+            
+            # Get doctor name if specified
+            doctor_name = None
+            if req.doctor_id:
+                doctor_result = await db.execute(
+                    select(User).where(User.id == req.doctor_id)
+                )
+                doctor = doctor_result.scalar_one_or_none()
+                if doctor:
+                    doctor_name = doctor.name
+            
+            # Get reviewer name if reviewed
+            reviewer_name = None
+            if req.reviewed_by:
+                reviewer_result = await db.execute(
+                    select(User).where(User.id == req.reviewed_by)
+                )
+                reviewer = reviewer_result.scalar_one_or_none()
+                if reviewer:
+                    reviewer_name = reviewer.name
+            
+            response = AppointmentRequestResponse(
+                id=req.id,
+                patient_id=req.patient_id,
+                patient_name=patient.name if patient else "Unknown",
+                doctor_id=req.doctor_id,
+                doctor_name=doctor_name,
+                preferred_date=req.preferred_date,
+                preferred_time=req.preferred_time,
+                reason=req.reason,
+                notes=req.notes,
+                status=req.status,
+                requested_at=req.requested_at,
+                reviewed_at=req.reviewed_at,
+                reviewed_by=req.reviewed_by,
+                reviewer_name=reviewer_name,
+                rejection_reason=req.rejection_reason,
+                approved_appointment_id=req.approved_appointment_id,
+                approved_start_time=req.approved_start_time,
+                approved_end_time=req.approved_end_time
+            )
+            
+            response_list.append(response)
+        
+        return response_list
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Falha ao listar solicitações: {str(e)}"
+        )
+
+
 @router.get("/", response_model=List[AppointmentRequestResponse])
 async def list_appointment_requests(
     status_filter: Optional[str] = Query(None, description="Filter by status (pending/approved/rejected/cancelled)"),
