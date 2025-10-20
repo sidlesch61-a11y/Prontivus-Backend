@@ -90,7 +90,8 @@ async def list_appointments(
         appointment_data = AppointmentResponse.model_validate(appointment)
         appointment_data.patient_name = patient_name
         appointment_data.doctor_name = doctor_name
-        appointment_responses.append(appointment_data)
+        # Return plain dicts to satisfy PaginatedResponse typing
+        appointment_responses.append(appointment_data.model_dump())
     
     return PaginatedResponse(
         items=appointment_responses,
