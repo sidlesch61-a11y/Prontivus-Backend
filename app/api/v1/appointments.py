@@ -16,11 +16,6 @@ from app.schemas import AppointmentCreate, AppointmentUpdate, AppointmentRespons
 
 router = APIRouter()
 
-@router.get("/test")
-async def test_appointments():
-    """Test endpoint to verify router is working."""
-    return {"message": "Appointments router is working", "status": "ok"}
-
 @router.get("/", response_model=PaginatedResponse)
 async def list_appointments(
     day: Optional[date] = Query(None, description="Filter by specific day"),
@@ -106,7 +101,7 @@ async def list_appointments(
     )
 
 
-@router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_appointment(
     appointment_data: AppointmentCreate,
     current_user = Depends(require_appointments_write),
