@@ -16,11 +16,6 @@ from app.schemas import AppointmentCreate, AppointmentUpdate, AppointmentRespons
 
 router = APIRouter()
 
-@router.get("/test")
-async def test_appointments():
-    """Test endpoint to verify router is working."""
-    return {"message": "Appointments router is working", "status": "ok"}
-
 @router.get("/", response_model=PaginatedResponse)
 async def list_appointments(
     day: Optional[date] = Query(None, description="Filter by specific day"),
@@ -28,7 +23,7 @@ async def list_appointments(
     status: Optional[str] = Query(None, description="Filter by status"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    current_user = Depends(require_appointments_read),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_transaction)
 ):
     """List appointments with filters and pagination."""
