@@ -187,9 +187,20 @@ async def create_prescription(
         first_prescription = result.scalar_one()
         
         # Return response
-        response = PrescriptionResponse.model_validate(first_prescription)
-        response.patient_name = patient.name
-        response.doctor_name = current_user.name
+        response = PrescriptionResponse(
+            id=first_prescription.id,
+            clinic_id=first_prescription.clinic_id,
+            record_id=first_prescription.record_id,
+            medication_name=first_prescription.medication_name,
+            dosage=first_prescription.dosage,
+            frequency=first_prescription.frequency,
+            duration=first_prescription.duration,
+            notes=first_prescription.notes,
+            created_at=first_prescription.created_at,
+            patient_id=str(patient.id),
+            patient_name=patient.name,
+            doctor_name=current_user.name
+        )
         
         return response
         
