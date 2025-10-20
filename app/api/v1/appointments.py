@@ -16,6 +16,11 @@ from app.schemas import AppointmentCreate, AppointmentUpdate, AppointmentRespons
 
 router = APIRouter()
 
+@router.get("/test")
+async def test_appointments():
+    """Test endpoint to verify router is working."""
+    return {"message": "Appointments router is working", "status": "ok"}
+
 @router.get("/", response_model=PaginatedResponse)
 async def list_appointments(
     day: Optional[date] = Query(None, description="Filter by specific day"),
