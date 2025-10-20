@@ -10,7 +10,7 @@ from sqlalchemy import select, and_, func, text, cast, String
 from sqlalchemy.exc import IntegrityError
 
 from app.core.auth import get_current_user, require_appointments_read, require_appointments_write
-from app.db.session import get_db_transaction, get_db_session
+from app.db.session import get_db_session
 from app.models import Appointment, Patient, User, AuditLog
 from app.schemas import AppointmentCreate, AppointmentUpdate, AppointmentResponse, PaginationParams, PaginatedResponse
 
@@ -24,7 +24,7 @@ async def list_appointments(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     current_user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_transaction)
+    db: AsyncSession = Depends(get_db_session)
 ):
     """List appointments with filters and pagination."""
     query = select(Appointment).where(Appointment.clinic_id == current_user.clinic_id)
@@ -105,7 +105,7 @@ async def list_appointments(
 async def create_appointment(
     appointment_data: AppointmentCreate,
     current_user = Depends(require_appointments_write),
-    db: AsyncSession = Depends(get_db_transaction)
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Create a new appointment with concurrency control."""
     
@@ -255,7 +255,7 @@ async def create_appointment(
 async def get_appointment(
     appointment_id: str,
     current_user = Depends(require_appointments_read),
-    db: AsyncSession = Depends(get_db_transaction)
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Get appointment by ID."""
     result = await db.execute(
@@ -420,7 +420,7 @@ async def delete_appointment(
 async def check_in_appointment(
     appointment_id: str,
     current_user = Depends(require_appointments_write),
-    db: AsyncSession = Depends(get_db_transaction)
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Check in patient for appointment."""
     # Get appointment
@@ -467,7 +467,7 @@ async def check_in_appointment(
 async def complete_appointment(
     appointment_id: str,
     current_user = Depends(require_appointments_write),
-    db: AsyncSession = Depends(get_db_transaction)
+    db: AsyncSession = Depends(get_db_session)
 ):
     """Complete appointment."""
     # Get appointment
