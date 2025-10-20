@@ -135,7 +135,7 @@ async def create_prescription(
         )
 
 
-@router.get("/", response_model=List[PrescriptionResponse])
+@router.get("/")
 async def list_prescriptions(
     search: Optional[str] = Query(None, description="Search by medication or patient name"),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
