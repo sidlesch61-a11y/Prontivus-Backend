@@ -488,6 +488,106 @@ async def call_patient(
 
 
 # ============================================================================
+# History and Timeline Routes (must come before generic /{consultation_id} routes)
+# ============================================================================
+
+@router.get("/history/{patient_id}/timeline")
+async def get_consultation_timeline(
+    patient_id: str,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get consultation history for a patient in timeline format."""
+    try:
+        from app.models.database import Consultation, Patient, User
+        
+        # Verify patient exists and belongs to clinic
+        patient_result = await db.execute(
+            select(Patient).where(
+                Patient.id == uuid.UUID(patient_id),
+                Patient.clinic_id == current_user.clinic_id
+            )
+        )
+        patient = patient_result.scalar_one_or_none()
+        
+        if not patient:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Patient not found"
+            )
+        
+        # Get consultations with pagination
+        offset = (page - 1) * size
+        
+        consultations_result = await db.execute(
+            select(Consultation)
+            .where(
+                Consultation.patient_id == uuid.UUID(patient_id),
+                Consultation.clinic_id == current_user.clinic_id
+            )
+            .order_by(Consultation.created_at.desc())
+            .offset(offset)
+            .limit(size)
+        )
+        
+        consultations = consultations_result.scalars().all()
+        
+        # Get total count
+        count_result = await db.execute(
+            select(Consultation)
+            .where(
+                Consultation.patient_id == uuid.UUID(patient_id),
+                Consultation.clinic_id == current_user.clinic_id
+            )
+        )
+        total = len(count_result.scalars().all())
+        
+        # Format for timeline display
+        timeline_data = []
+        for consultation in consultations:
+            # Get doctor name
+            doctor_result = await db.execute(
+                select(User).where(User.id == consultation.doctor_id)
+            )
+            doctor = doctor_result.scalar_one_or_none()
+            
+            timeline_data.append({
+                "id": str(consultation.id),
+                "date": consultation.created_at.isoformat(),
+                "doctor_name": doctor.name if doctor else "Unknown",
+                "diagnosis": consultation.diagnosis or "No diagnosis",
+                "summary": consultation.treatment_plan or consultation.notes or "No summary",
+                "status": getattr(consultation, 'status', 'completed'),
+                "type": "consultation"
+            })
+        
+        return {
+            "patient_id": patient_id,
+            "patient_name": patient.name,
+            "timeline": timeline_data,
+            "pagination": {
+                "page": page,
+                "size": size,
+                "total": total,
+                "pages": (total + size - 1) // size
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting consultation timeline: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get consultation timeline: {str(e)}"
+        )
+
+
+# ============================================================================
 # Generic routes with path parameters (must come after specific routes)
 # ============================================================================
 
