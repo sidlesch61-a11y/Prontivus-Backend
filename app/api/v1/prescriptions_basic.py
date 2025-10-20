@@ -214,67 +214,6 @@ async def create_prescription(
         )
 
 
-@router.get("/")
-async def list_prescriptions(
-    search: Optional[str] = Query(None, description="Search by medication or patient name"),
-    patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
-    page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=100),
-    current_user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_session)
-):
-    """List prescriptions with optional filters."""
-    try:
-        query = select(PrescriptionDB).where(PrescriptionDB.clinic_id == current_user.clinic_id)
-        
-        if patient_id:
-            query = query.where(PrescriptionDB.record_id == patient_id)
-        
-        if search:
-            query = query.where(
-                or_(
-                    PrescriptionDB.medication_name.ilike(f"%{search}%"),
-                    PrescriptionDB.notes.ilike(f"%{search}%")
-                )
-            )
-        
-        query = query.order_by(PrescriptionDB.created_at.desc())
-        query = query.offset((page - 1) * size).limit(size)
-        
-        result = await db.execute(query)
-        prescriptions = result.scalars().all()
-        
-        # Get patient names
-        response_list = []
-        for prescription in prescriptions:
-            response = PrescriptionResponse.model_validate(prescription)
-            
-            # Get patient name if record_id exists
-            if prescription.record_id:
-                from app.models.database import MedicalRecord
-                record_result = await db.execute(
-                    select(MedicalRecord).where(MedicalRecord.id == prescription.record_id)
-                )
-                record = record_result.scalar_one_or_none()
-                
-                if record and record.patient_id:
-                    patient_result = await db.execute(
-                        select(Patient).where(Patient.id == record.patient_id)
-                    )
-                    patient = patient_result.scalar_one_or_none()
-                    if patient:
-                        response.patient_name = patient.name
-                        response.patient_id = str(patient.id)
-            
-            response_list.append(response)
-        
-        return response_list
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list prescriptions: {str(e)}"
-        )
 
 
 @router.get("/{prescription_id}", response_model=PrescriptionResponse)
