@@ -324,7 +324,7 @@ app.include_router(tiss_basic.router, prefix="/api/v1/tiss", tags=["TISS"])  # b
 app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
 app.include_router(medical_records_lock.router, prefix="/api/v1/medical_records_lock", tags=["Medical Records"])
 app.include_router(medical_records_files.router, prefix="/api/v1/medical_records_files", tags=["Medical Records"])
-app.include_router(prescriptions_basic.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
+# app.include_router(prescriptions_basic.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
 app.include_router(prescriptions_advanced.router, prefix="/api/v1/prescriptions_advanced", tags=["Prescriptions"])
 app.include_router(prescription_verification.router, prefix="/api/v1/prescription_verification", tags=["Public"])
 app.include_router(password_reset.router, prefix="/api/v1/password_reset", tags=["Authentication"])
@@ -383,7 +383,7 @@ async def root():
         "version": settings.app_version,
         "environment": settings.app_env,
         "docs": "/docs" if settings.debug else "Documentation not available in production",
-        "deployment_version": "v3.17-fix-prescriptions-router-import-error"
+        "deployment_version": "v3.18-temporarily-disable-prescriptions-router"
     }
 
 
