@@ -31,7 +31,7 @@ class VitalSigns(BaseModel):
 
 class ConsultationCreate(BaseModel):
     patient_id: str
-    appointment_id: str
+    appointment_id: Optional[str] = None
     doctor_id: str
     
     # Anamnese
@@ -133,27 +133,29 @@ async def create_consultation(
                 detail="Patient not found"
             )
         
-        # Verify appointment exists
-        appointment_result = await db.execute(
-            select(Appointment).where(
-                Appointment.id == consultation_data.appointment_id,
-                Appointment.clinic_id == current_user.clinic_id
+        # Verify appointment exists (if provided)
+        appointment = None
+        if consultation_data.appointment_id:
+            appointment_result = await db.execute(
+                select(Appointment).where(
+                    Appointment.id == consultation_data.appointment_id,
+                    Appointment.clinic_id == current_user.clinic_id
+                )
             )
-        )
-        appointment = appointment_result.scalar_one_or_none()
-        
-        if not appointment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Appointment not found"
-            )
+            appointment = appointment_result.scalar_one_or_none()
+            
+            if not appointment:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Appointment not found"
+                )
         
         # Create consultation
         consultation = Consultation(
             id=uuid.uuid4(),
             clinic_id=current_user.clinic_id,
             patient_id=uuid.UUID(consultation_data.patient_id),
-            appointment_id=uuid.UUID(consultation_data.appointment_id),
+            appointment_id=uuid.UUID(consultation_data.appointment_id) if consultation_data.appointment_id else None,
             doctor_id=uuid.UUID(consultation_data.doctor_id),
             chief_complaint=consultation_data.chief_complaint,
             history_present_illness=consultation_data.history_present_illness,
