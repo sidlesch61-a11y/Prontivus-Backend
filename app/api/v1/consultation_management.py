@@ -680,7 +680,9 @@ async def finalize_consultation(
         
         # Update consultation timestamp and status
         consultation.updated_at = datetime.now()
-        consultation.status = "completed"
+        consultation.is_locked = True
+        consultation.locked_at = datetime.now()
+        consultation.locked_by = current_user.id
         
         # Create historical record with all consultation data
         from app.models.consultation_extended import ConsultationExtended
