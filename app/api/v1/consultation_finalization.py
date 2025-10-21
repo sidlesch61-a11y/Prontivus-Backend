@@ -11,7 +11,7 @@ import uuid
 
 from app.core.auth import get_current_user, require_medical_records_write, require_medical_records_read
 from app.db.session import get_db_session
-from app.models import Consultation, Patient, User
+from app.models import Consultation, Patient, User, MedicalRecord
 from app.schemas import ConsultationFinalizeRequest
 
 router = APIRouter()
@@ -90,6 +90,25 @@ async def finalize_consultation(
         )
         
         db.add(history_consultation)
+        
+        # Create medical record for the records page
+        medical_record = MedicalRecord(
+            id=str(uuid.uuid4()),
+            appointment_id=consultation.appointment_id,
+            clinic_id=current_user.clinic_id,
+            doctor_id=current_user.id,
+            patient_id=consultation.patient_id,
+            record_type="encounter",
+            anamnesis=request.anamnesis or "",
+            physical_exam=request.observations or "",
+            diagnosis=request.diagnosis or "",
+            icd_code="",  # Will be filled if diagnosis_code is provided
+            treatment_plan=request.finalization_notes or "",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.add(medical_record)
         await db.commit()
         
         return {
@@ -97,6 +116,7 @@ async def finalize_consultation(
             "message": "Consulta finalizada com sucesso",
             "consultation_id": consultation_id,
             "history_record_id": history_consultation.id,
+            "medical_record_id": medical_record.id,
             "finalized_at": datetime.utcnow().isoformat(),
             "finalized_by": current_user.name
         }
