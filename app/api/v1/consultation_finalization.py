@@ -37,29 +37,19 @@ async def finalize_consultation(
             raise HTTPException(status_code=404, detail="Consulta não encontrada")
         
         # Check if consultation is already finalized
-        if consultation.status == "completed":
+        if consultation.is_locked:
             raise HTTPException(status_code=400, detail="Consulta já foi finalizada")
         
         # Update consultation with final data
-        consultation_data = {
-            **consultation.data,
-            "anamnesis": request.anamnesis,
-            "diagnosis": request.diagnosis,
-            "exams": request.exams,
-            "prescriptions": request.prescriptions,
-            "observations": request.observations,
-            "finalization_notes": request.finalization_notes,
-            "finalized_by": current_user.id,
-            "finalized_at": datetime.utcnow().isoformat()
-        }
-        
-        # Update consultation status and data
         await db.execute(
             update(Consultation)
             .where(Consultation.id == consultation_id)
             .values(
-                status="completed",
-                data=consultation_data,
+                diagnosis=request.diagnosis,
+                treatment_plan=request.finalization_notes,
+                is_locked=True,
+                locked_at=datetime.utcnow(),
+                locked_by=current_user.id,
                 updated_at=datetime.utcnow()
             )
         )
@@ -70,21 +60,13 @@ async def finalize_consultation(
             patient_id=consultation.patient_id,
             doctor_id=current_user.id,
             clinic_id=current_user.clinic_id,
-            status="completed",
-            type="history_record",
-            data={
-                "original_consultation_id": consultation_id,
-                "anamnesis": request.anamnesis,
-                "diagnosis": request.diagnosis,
-                "exams": request.exams,
-                "prescriptions": request.prescriptions,
-                "observations": request.observations,
-                "finalization_notes": request.finalization_notes,
-                "created_from": "finalization",
-                "created_at": datetime.utcnow().isoformat(),
-                "finalized_by": current_user.id,
-                "finalized_at": datetime.utcnow().isoformat()
-            },
+            appointment_id=consultation.appointment_id,
+            chief_complaint=request.anamnesis,
+            diagnosis=request.diagnosis,
+            treatment_plan=request.finalization_notes,
+            is_locked=True,
+            locked_at=datetime.utcnow(),
+            locked_by=current_user.id,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
