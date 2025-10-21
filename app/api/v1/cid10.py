@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from typing import List
 from app.db.session import get_db_session
-from app.core.auth import AuthDependencies
+from app.core.auth import get_current_user
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/cid10", tags=["CID-10 Codes"])
+router = APIRouter(tags=["CID-10 Codes"])
 
 
 class CID10Code(BaseModel):
@@ -31,7 +31,7 @@ async def search_cid10_codes(
     query: str = Query(..., min_length=1, description="Search query (code or description)"),
     limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
     db: AsyncSession = Depends(get_db_session),
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
 ):
     """
     Search CID-10 codes by code or description.
@@ -91,7 +91,7 @@ async def search_cid10_codes(
 async def get_cid10_by_code(
     code: str,
     db: AsyncSession = Depends(get_db_session),
-    current_user = Depends(AuthDependencies.get_current_user),
+    current_user = Depends(get_current_user),
 ):
     """
     Get a specific CID-10 code by its code.
