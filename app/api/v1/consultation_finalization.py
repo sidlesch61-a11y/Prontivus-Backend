@@ -127,7 +127,7 @@ async def get_consultation_history(
             .where(
                 Consultation.patient_id == patient_id,
                 Consultation.clinic_id == current_user.clinic_id,
-                Consultation.status == "completed"
+                Consultation.is_locked == True
             )
             .order_by(Consultation.created_at.desc())
             .offset(offset)
@@ -142,7 +142,7 @@ async def get_consultation_history(
             .where(
                 Consultation.patient_id == patient_id,
                 Consultation.clinic_id == current_user.clinic_id,
-                Consultation.status == "completed"
+                Consultation.is_locked == True
             )
         )
         total = len(count_result.scalars().all())
