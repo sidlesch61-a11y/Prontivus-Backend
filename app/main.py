@@ -310,6 +310,9 @@ app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["Consultations"])
 
+# CID-10 router - moved to early position to avoid conflicts
+app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
+
 # Test consultation_management router with different prefix
 app.include_router(consultation_management.router, prefix="/api/v1/consultation-mgmt", tags=["Consultation Management"])  # TEST: Try different prefix
 # Re-enable additional working routers
@@ -321,7 +324,6 @@ app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 # Re-enable advanced TISS endpoints
 app.include_router(tiss.router, prefix="/api/v1/tiss_advanced", tags=["TISS"])  # advanced TISS
 app.include_router(tiss_basic.router, prefix="/api/v1/tiss", tags=["TISS"])  # basic CRUD used by UI
-app.include_router(cid10.router, prefix="/api/v1/cid10", tags=["CID-10"])
 app.include_router(medical_records_lock.router, prefix="/api/v1/medical_records_lock", tags=["Medical Records"])
 app.include_router(medical_records_files.router, prefix="/api/v1/medical_records_files", tags=["Medical Records"])
 app.include_router(prescriptions_basic.router, prefix="/api/v1/prescriptions", tags=["Prescriptions"])
